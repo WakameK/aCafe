@@ -1,0 +1,4 @@
+作ったアプリは片っ端から
+mysite\setting.pyにある
+INSTALLED_APPS 
+に入れといてください

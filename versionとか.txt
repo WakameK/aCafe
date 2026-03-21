@@ -18,4 +18,9 @@ django 6.0.3
 開発メモ
 python manage.py startapp <適当な名前>
 でアプリを作成します
+python manage.py migrate←やった
 
+superuser設定
+ユーザー名:wakame
+メールアドレス:black.as.0nana@gmail.com
+password:wakame
