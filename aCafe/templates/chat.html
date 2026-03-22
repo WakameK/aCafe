@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>ChatBot</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        #chat-box { border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: scroll; }
+        .user { color: blue; margin: 5px 0; }
+        .bot { color: green; margin: 5px 0; }
+    </style>
+</head>
+<body>
+    <h1>ChatBot</h1>
+
+    <div id="chat-box"></div>
+
+    <input id="message" type="text" placeholder="メッセージを入力" style="width: 80%;">
+    <button onclick="sendMessage()">送信</button>
+
+    <script>
+        function sendMessage() {
+            const msg = document.getElementById("message").value;
+            if (!msg) return;
+
+            // 画面にユーザーのメッセージを追加
+            const chatBox = document.getElementById("chat-box");
+            chatBox.innerHTML += `<div class="user">あなた: ${msg}</div>`;
+
+            // Django に送信
+            fetch("/chat_api/", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": "{{ csrf_token }}"
+                },
+                body: JSON.stringify({ message: msg })
+            })
+            .then(res => res.json())
+            .then(data => {
+                chatBox.innerHTML += `<div class="bot">Bot: ${data.reply}</div>`;
+                chatBox.scrollTop = chatBox.scrollHeight;
+            });
+
+            document.getElementById("message").value = "";
+        }
+    </script>
+</body>
+</html>
