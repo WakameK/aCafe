@@ -1,0 +1,8 @@
+
+# HTTP request example
+POST http://127.0.0.1:8000/chat_api/
+Content-Type: application/json
+
+{
+  "message": "test"
+}
