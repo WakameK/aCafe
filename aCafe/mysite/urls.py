@@ -26,11 +26,13 @@ urlpatterns = [
 
     # トップページ
     path('', views.index, name='index'),
+    path('index/', views.index, name='index'),
 
     # チャット画面
     path('chat/', views.chat_page, name='chat'),
-
     # チャットAPI
     path('chat_api/', views.chat_api, name='chat_api'),
+
+    path('atelier/', views.atelier, name='atelier'),
 ]
 

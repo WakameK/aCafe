@@ -6,9 +6,6 @@ import requests
 
 def index(request):
     return render(request, "index.html")
-
-
-
 def chat_page(request):
     return render(request, "chat.html")
 
@@ -30,5 +27,6 @@ def chat_api(request):
 
     return JsonResponse({"error": "POST only"}, status=400)
 
-
+def atelier(request):
+    return render(request, "atelier.html")
 

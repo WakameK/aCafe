@@ -8,7 +8,7 @@ Content-Type: application/json
 }
 
 # HTTP request example for local API
-POST http://localhost:11434/api/generate
+POST http://localhost:11434/api/generate/
 Content-Type: application/json
 
 {
