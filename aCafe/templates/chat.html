@@ -1,16 +1,8 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>"マスター"のテーブル</title>
-    <style>
-        body { font-family: sans-serif; margin: 20px; }
-        #chat-box { border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: scroll; }
-        .user { color: blue; margin: 5px 0; }
-        .bot { color: green; margin: 5px 0; }
-    </style>
-</head>
-<body>
+{% extends "base.html" %}
+
+{% block title %}くまの隠れ家{% endblock %}
+
+{% block content %}
     <h1>カフェのマスターと話す</h1>
 
     <div id="chat-box"></div>
@@ -46,5 +38,4 @@
         }
     </script>
     <a href="/index">戻る</a>
-</body>
-</html>
+{% endblock %}

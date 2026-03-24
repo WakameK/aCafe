@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}くまの隠れ家{% endblock %}</title>
+
+    <!-- 共通CSS -->
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+    </style>
+
+    {% block head %}{% endblock %}
+</head>
+<body>
+
+<header>
+    <h1><a href="/">くまの隠れ家</a></h1>
+    <nav>
+        <a href="/">Home</a> |
+        <a href="/chat/">Chat</a>|
+        <a href="/atelier/">Atelier</a>
+    </nav>
+    <hr>
+</header>
+
+<main>
+    {% block content %}{% endblock %}
+</main>
+
+<footer>
+    <hr>
+    <p>© 2026 くまの隠れ家</p>
+</footer>
+
+</body>
+</html>

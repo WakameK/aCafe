@@ -1,13 +1,12 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>ある喫茶店</title>
-    
-</head>
-<body>
+{% extends "base.html" %}
+
+{% block title %}くまの隠れ家{% endblock %}
+
+{% block content %}
+
     <h1>『くまの隠れ家』</h1>
-    <p>ここはくまの隠れ家です。</p>
+    <p>店内が穏やかなBGMに包まれている</p>
     <a href="/chat">カフェのマスターと話す</a><br>
-    <a href="/atelier">女性のアトリエ</a>
-</body>
-</html>
+    <a href="/atelier">女性のアトリエ</a><br>
+
+{% endblock %}
