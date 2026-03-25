@@ -27,3 +27,13 @@ superuser設定
 ユーザー名:wakame
 メールアドレス:black.as.0nana@gmail.com
 password:wakame
+
+ollamaを裏で動かしてaiに接続する
+ollama run [利用可能なモデル名]
+利用可能なモデル名を表示する
+ollama list
+
+現状で日本語強くて軽量なのがgemma3的な記述がいい感じなので
+ollama pull gemma3:4b
+してインストールして使ってね
+ollama run gemma3:4b

@@ -1,10 +1,8 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>"女性"のアトリエ</title>
-    
-</head>
-<body>
+{% extends "base.html" %}
+
+{% block title %}"女性"のアトリエ{% endblock %}
+
+{% block content %}
     <h1>"女性"のアトリエ</h1>
     <p>"女性"が作ったモノが無造作に置かれている。</p>
 
@@ -17,5 +15,4 @@
     いっぱいになると別の全く新しいモノに生まれ変わる。とか 
     {% endcomment %}
     <a href="/index">戻る</a><br>
-</body>
-</html>
+{% endblock %}
