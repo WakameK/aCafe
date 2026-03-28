@@ -29,12 +29,30 @@ class characters(models.Model):
 # 来談者(ユーザー)のモデル
 # =========================================================================
 class users(models.Model):
-    user_id = models.AutoField(primary_key=True)       #自動で1から始まるIDを振る
-    name = models.CharField(max_length=20)             #ユーザーの名前
-    email = models.EmailField()                        #ユーザーのメールアドレス
-    password = models.CharField(max_length=20)         #ユーザーのパスワード
+    user_id = models.AutoField(primary_key=True)                #自動で1から始まるIDを振る
+    anon_id = models.CharField(max_length=20)                   #匿名ID(別デバイスからのログインを識別するため)
+    name = models.CharField(max_length=20)                      #ユーザーの名前
+    login_key = models.CharField(max_length=100)                #合言葉(別デバイスからのログイン)
+    created_at = models.DateTimeField(auto_now_add=True)
     def __str__(self):
         return self.name
+
+
+# ========================================================================
+# チャットログのモデル
+# ========================================================================
+class ChatLog(models.Model):
+    user = models.ForeignKey(users, on_delete=models.CASCADE)
+    role = models.CharField(max_length=20)  # "user" or "assistant"
+    message = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+
+
+
+
 # ========================================================================
 # 情報提供書のモデル
 # ========================================================================

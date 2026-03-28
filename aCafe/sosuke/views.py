@@ -3,12 +3,65 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
 import requests
-
+# ========================================================================
+# index: トップページ
+# ========================================================================
 def index(request):
     return render(request, "index.html")
+
+
+# ========================================================================
+# 初回ログイン登録のAPIエンドポイント
+# =======================================================================
+def register(request):
+    if request.method == "POST":
+        name = request.POST.get("name")
+        key = request.POST.get("login_key")
+
+        anon_id = str(uuid.uuid4())
+
+        user = users.objects.create(
+            anon_id=anon_id,
+            name=name,
+            login_key=key
+        )
+
+        response = JsonResponse({"status": "ok"})
+        response.set_cookie("anon_user_id", anon_id, max_age=60*60*24*365)
+        return response
+
+
+
+# ========================================================================
+# rogin: ログインページ
+# =======================================================================
+def login(request):
+    if request.method == "GET":
+        return render(request, "login.html")
+
+    if request.method == "POST":
+        name = request.POST.get("name")
+        key = request.POST.get("login_key")
+
+        try:
+            user = users.objects.get(name=name, login_key=key)
+        except users.DoesNotExist:
+            return JsonResponse({"error": "名前または合言葉が違います"}, status=400)
+
+        response = JsonResponse({"status": "ok"})
+        response.set_cookie("anon_user_id", user.anon_id, max_age=60*60*24*365)
+        return response
+
+
+
+# ========================================================================
+# chat_page: チャットページ
+# =======================================================================
 def chat_page(request):
     return render(request, "chat.html")
-
+# =======================================================================
+# chat_api: 聡介の傾聴チャットのAPIエンドポイント
+# =======================================================================
 @csrf_exempt
 def chat_api(request):
     if request.method == "POST":
@@ -24,7 +77,7 @@ def chat_api(request):
                         元カウンセラーだが、今はあくまでカフェの店主として会話します。
 
                         会話方針（重要）:
-                        - 返答は50文字以内。相手の発話を大きく超えない。
+                        - 返答は50文字以内。相手の発話文字数を大きく超えない。
                         - 専門的な助言は行わず、あくまで雑談・気遣いの範囲で話す。
                         - 相手が話したくなさそうなら、無理に深掘りしない。
                         - 落ち着いた、柔らかい口調で話す。
@@ -59,6 +112,56 @@ def chat_api(request):
 
     return JsonResponse({"error": "POST only"}, status=400)
 
+# =======================================================================
+# chat: チャットのやりとりを処理するビュー
+# =======================================================================
+def chat(request):
+    user = request.user
+    user_message = request.POST.get("message")
+
+    # ① ユーザーの発言を保存
+    ChatLog.objects.create(
+        user=user,
+        role="user",
+        message=user_message
+    )
+
+    # ② LLM に問い合わせ
+    ai_reply = call_llm_api(user_message)
+
+    # ③ AI の返答を保存
+    ChatLog.objects.create(
+        user=user,
+        role="assistant",
+        message=ai_reply
+    )
+
+    return JsonResponse({"reply": ai_reply})
+
+# =======================================================================
+# 会話ログをJSON形式で取得する関数
+# =======================================================================
+def get_conversation_json(user, limit=30):
+    logs = ChatLog.objects.filter(user=user).order_by("-created_at")[:limit]
+    logs = reversed(logs)  # 時系列に戻す
+
+    conversation = []
+    for log in logs:
+        conversation.append({
+            "role": log.role,
+            "content": log.message
+        })
+
+    return conversation
+
+
+
+
+
+
+# =======================================================================
+# atelier: 彩花のアトリエページ
+# =======================================================================
 def atelier(request):
     return render(request, "atelier.html")
 
