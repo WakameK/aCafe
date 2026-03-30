@@ -18,21 +18,11 @@ Including another URLconf
 # urlの定義
 # ==============================================================================
 from django.contrib import admin
-from django.urls import path
-from sosuke import views   # ← これだけでOK
+from django.urls import include, path
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-
-    # トップページ
-    path('', views.index, name='index'),
-    path('index/', views.index, name='index'),
-
-    # チャット画面
-    path('chat/', views.chat_page, name='chat'),
-    # チャットAPI
-    path('chat_api/', views.chat_api, name='chat_api'),
-
-    path('atelier/', views.atelier, name='atelier'),
+    path('', include('sosuke.urls')),
+    path('atelier/', include('ayaka.urls')),
 ]
 
