@@ -22,12 +22,8 @@ from django.urls import include, path
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-<<<<<<< HEAD
     path('', include('sosuke.urls')),               # ルートURLをsosukeアプリに割り当てる
     path('atelier/', include('ayaka.urls')),        # atelier/以下のURLをayakaアプリに割り当てる
-=======
-    path('', include('sosuke.urls')),
-    path('atelier/', include('ayaka.urls')),
->>>>>>> 3d3bf843712bf76ac0fcddf9a5e727810a5522a4
+    path('desk/', include('desk.urls')),            # desk/以下のURLをdeskアプリに割り当てる
 ]
 

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}くまの隠れ家{% endblock %}
+
+{% block content %}
+
+
+<div id="chat-box"></div>
+
+<input id="msg" type="text">
+<button onclick="send()">送信</button>
+
+<script>
+function loadMessages() {
+    fetch("/desk/1/messages/")
+        .then(res => res.json())
+        .then(data => {
+            const box = document.getElementById("chat-box");
+            box.innerHTML = "";
+            data.messages.forEach(m => {
+                box.innerHTML += `<div><b>${m.user}</b>: ${m.content}</div>`;
+            });
+        });
+}
+
+function send() {
+    const msg = document.getElementById("msg").value;
+
+    fetch("/desk/1/send/", {
+        method: "POST",
+        headers: {"X-CSRFToken": "{{ csrf_token }}"},
+        body: new URLSearchParams({content: msg})
+    }).then(() => {
+        document.getElementById("msg").value = "";
+        loadMessages();
+    });
+}
+
+setInterval(loadMessages, 2000); // 2秒ごとに更新
+</script>
+
+{% endblock %}
