@@ -1,11 +1,23 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}くまの隠れ家{% endblock %}
 
+{% block head %}
+    <link rel="stylesheet" href="{% static 'css/index.css' %}">
+    <script src="{% static 'js/index.js' %}"></script>
+{% endblock %}
+
 {% block content %}
 
+    {% comment %} 初回イントロ用 {% endcomment %}
+    <div id="intro-screen" class="intro-screen">
+        <img id="intro-image" src="/static/images/step1.jpg" class="intro-image">
+    </div>
+
+
     <h1>『くまの隠れ家』</h1>
-    <p>店内は穏やかなBGMに包まれている</p>
+    <p>穏やかなBGMが流れている</p>
     <a href="/chat">カフェのマスターと話す</a><br>
     <a href="/atelier">女性のアトリエ</a><br>
     <a href="{% url 'desk_room' %}">席に座る</a>

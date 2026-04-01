@@ -1,12 +1,13 @@
 <!DOCTYPE html>
 <html lang="ja">
+{% load static %}
 <head>
     <meta charset="UTF-8">
     <title>{% block title %}くまの隠れ家{% endblock %}</title>
 
     <!-- 共通CSS -->
-    <link rel="stylesheet" href="css/style.css">
-    <script src="js/base.js"></script>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <script src="{% static 'js/base.js' %}"></script>
     {% block head %}{% endblock %}
 </head>
 <body>
