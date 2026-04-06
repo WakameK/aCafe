@@ -37,3 +37,9 @@ ollama list
 ollama pull gemma3:4b
 してインストールして使ってね
 ollama run gemma3:4b
+
+DB
+https://sqlitebrowser.org/dl/
+にあるsqliteを使っています
+
+SQLite Viewerという拡張機能をダウンロードしてdbの中身を見てなんかいい感じにしとけ
