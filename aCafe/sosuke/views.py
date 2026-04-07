@@ -4,8 +4,13 @@
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from .models import ChatLog
 import json
 import requests
+import uuid
+
+
+
 # ========================================================================
 # index: トップページ
 # ========================================================================
@@ -72,10 +77,31 @@ def chat_page(request):
 # =======================================================================
 @csrf_exempt
 def chat_api(request):
+
+    # ① Cookie に anon_user_id が無ければ登録を要求
+    anon_id = request.COOKIES.get("anon_user_id")
+    if not anon_id:
+        return JsonResponse({"need_register": True})
+
+    # ② anon_id からユーザーを取得
+    try:
+        user = users.objects.get(anon_id=anon_id)
+    except users.DoesNotExist:
+        return JsonResponse({"need_register": True})
+
     if request.method == "POST":
         data = json.loads(request.body)
         msg = data.get("message", "")
 
+        # ★★★ 絶対に消す！！ ★★★
+        # user = request.user
+
+        # ① ユーザーの発言を保存
+        ChatLog.objects.create(
+            user=user,
+            role="user",
+            message=msg
+        )
         payload = {
             "model": "gemma3:4b",  # ここに裏で動いているGemmaのモデル名を入力↓↓「」付けるとダメかも
             "prompt": f"""
@@ -98,6 +124,9 @@ def chat_api(request):
                         - 助けられなかった人がいたんです。だから辞めました。
                         - ワトソンは、どうしてホームズのことを書こうと思ったのでしょうね。
 
+                        禁止事項:
+                        - 対象の病状から病名を診断すること
+
                         ユーザー: {msg}
                         茅根聡介として返答:
                     """,
@@ -110,11 +139,25 @@ def chat_api(request):
             stream=False
         )
 
-        print("Ollama raw:", res.text) # デバッグ用にレスポンス全体を表示
+        print("Ollama raw:", res.text)
 
-        reply = res.json().get("response", "")
+        data = res.json()
 
-        print("reply:", reply) # デバッグ用に抽出した返信を表示
+        reply = (
+            data.get("response") or
+            data.get("output") or
+            data.get("message") or
+            data.get("content") or
+            data.get("text") or
+            ""
+        )
+
+        # ② AI の返答を保存
+        ChatLog.objects.create(
+            user=user,
+            role="sosuke",
+            message=reply
+        )
 
         return JsonResponse({"reply": reply})
 
@@ -163,13 +206,18 @@ def get_conversation_json(user, limit=30):
     return conversation
 
 
+# ========================================================================
+# デバッグ用のuuid確認関数
+# ========================================================================
+
+
+def debug_create_user(request):
+    anon_id = str(uuid.uuid4())
+    users.objects.create(anon_id=anon_id, name="test", login_key="test")
+    response = JsonResponse({"status": "ok"})
+    response.set_cookie("anon_user_id", anon_id)
+    return response
 
 
 
-
-# =======================================================================
-# atelier: 彩花のアトリエページ
-# =======================================================================
-def atelier(request):
-    return render(request, "atelier.html")
 
