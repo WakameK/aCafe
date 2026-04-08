@@ -4,7 +4,8 @@
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from .models import ChatLog
+from .models import users, ChatLog
+
 import json
 import requests
 import uuid
@@ -44,21 +45,22 @@ def register(request):
         return response
 
 # ===========================================================================
-# ログインページ
+# ログインページ / 会員登録ページ
 # ===========================================================================
 def login_page(request):
     return render(request,"login.html")
 
 
+# ===========================================================================
+#
+# ===========================================================================
+
 
 
 # ========================================================================
-# ログイン処理
+# 再入場処理
 # =======================================================================
 def login(request):
-    if request.method == "GET":
-        return render(request, "login.html")
-
     if request.method == "POST":
         name = request.POST.get("name")
         key = request.POST.get("login_key")
@@ -85,25 +87,30 @@ def chat_page(request):
 @csrf_exempt
 def chat_api(request):
 
-    # ① Cookie に anon_user_id が無ければ登録を要求
+    # ★ ① Cookie が無ければ自動登録
     anon_id = request.COOKIES.get("anon_user_id")
     if not anon_id:
-        return JsonResponse({"need_register": True})
+        anon_id = str(uuid.uuid4())
+        user = users.objects.create(
+            anon_id=anon_id,
+            name="名無し",
+            login_key=None
+        )
+        response = JsonResponse({"status": "auto_registered"})
+        response.set_cookie("anon_user_id", anon_id, max_age=60*60*24*365)
+        return response
 
-    # ② anon_id からユーザーを取得
+    # ★ ② Cookie がある → DB からユーザー取得
     try:
         user = users.objects.get(anon_id=anon_id)
     except users.DoesNotExist:
         return JsonResponse({"need_register": True})
 
+    # ★ ③ ここから先はあなたの元コードそのまま
     if request.method == "POST":
         data = json.loads(request.body)
         msg = data.get("message", "")
 
-        # ★★★ 絶対に消す！！ ★★★
-        # user = request.user
-
-        # ① ユーザーの発言を保存
         ChatLog.objects.create(
             user=user,
             role="user",
@@ -140,14 +147,7 @@ def chat_api(request):
             "stream": False,
         }
 
-        res = requests.post(
-            "http://localhost:11434/api/generate",
-            json=payload,
-            stream=False
-        )
-
-        print("Ollama raw:", res.text)
-
+        res = requests.post("http://localhost:11434/api/generate", json=payload)
         data = res.json()
 
         reply = (
@@ -159,7 +159,6 @@ def chat_api(request):
             ""
         )
 
-        # ② AI の返答を保存
         ChatLog.objects.create(
             user=user,
             role="sosuke",
