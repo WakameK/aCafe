@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}くまの隠れ家{% endblock %}
+{% block title %}あなたの情報{% endblock %}
 
 {% block head %}
-    <link rel="stylesheet" href="{% static 'css/profile.css' %}">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
     <script src="{% static 'js/profile.js' %}"></script>
 {% endblock %}
 
@@ -12,7 +12,12 @@
     <h1>あなたについて</h1><br>
     <p>オーナーとの会話履歴、そこから作成した情報提供書。持ち帰った女性の作品を閲覧できます。</p><br>
 
-    <a href="/">トップへ戻る</a><br>
+    <section>
+        <h2>会話履歴</h2>
+        <button id="download-chat-log-btn" class="btn btn-primary">チャット履歴をダウンロード</button>
+        <p id="download-status" style="display: none;"></p>
+    </section><br>
 
+    <a href="/">トップへ戻る</a><br>
 
 {% endblock %}

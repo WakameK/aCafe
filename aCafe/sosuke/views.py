@@ -16,7 +16,30 @@ import uuid
 # index: トップページ
 # ========================================================================
 def index(request):
-    return render(request, "index.html")
+    anon_id = request.COOKIES.get("anon_user_id")
+
+    if anon_id:
+        try:
+            user = users.objects.get(anon_id=anon_id)
+            return render(request, "index.html", {"user": user})
+        except users.DoesNotExist:
+            pass
+
+    anon_id = str(uuid.uuid4())
+    user = users.objects.create(
+        anon_id=anon_id,
+        name=None,
+        login_key=None
+    )
+
+    response = render(request, "index.html", {"user": user})
+    response.set_cookie("anon_user_id", anon_id, max_age=60*60*24*365)
+    return response
+
+
+
+
+    
 # =======================================================================
 # profile: ユーザープロフィールページ
 # =======================================================================
@@ -29,20 +52,22 @@ def profile(request):
 # =======================================================================
 def register(request):
     if request.method == "POST":
-        name = request.POST.get("name")
-        key = request.POST.get("login_key")
+        anon_id = request.COOKIES.get("anon_user_id")
 
-        anon_id = str(uuid.uuid4())
+        if not anon_id:
+            return JsonResponse({"error": "cookie がありません"}, status=400)
 
-        user = users.objects.create(
-            anon_id=anon_id,
-            name=name,
-            login_key=key
-        )
+        try:
+            user = users.objects.get(anon_id=anon_id)
+        except users.DoesNotExist:
+            return JsonResponse({"error": "ユーザーが存在しません"}, status=400)
 
-        response = JsonResponse({"status": "ok"})
-        response.set_cookie("anon_user_id", anon_id, max_age=60*60*24*365)
-        return response
+        user.name = request.POST.get("name")
+        user.login_key = request.POST.get("login_key")
+        user.save()
+
+        return JsonResponse({"status": "ok"})
+
 
 # ===========================================================================
 # ログインページ / 会員登録ページ
@@ -73,6 +98,7 @@ def login(request):
         response = JsonResponse({"status": "ok"})
         response.set_cookie("anon_user_id", user.anon_id, max_age=60*60*24*365)
         return response
+    return render(request, "login.html")
 
 
 
@@ -222,6 +248,40 @@ def debug_create_user(request):
     users.objects.create(anon_id=anon_id, name="test", login_key="test")
     response = JsonResponse({"status": "ok"})
     response.set_cookie("anon_user_id", anon_id)
+    return response
+
+# =======================================================================
+# export_chat_log: チャットログをJSON形式でダウンロード
+# =======================================================================
+def export_chat_log(request):
+    anon_id = request.COOKIES.get("anon_user_id")
+    
+    if not anon_id:
+        return JsonResponse({"error": "ユーザーが識別できません"}, status=400)
+    
+    try:
+        user = users.objects.get(anon_id=anon_id)
+    except users.DoesNotExist:
+        return JsonResponse({"error": "ユーザーが見つかりません"}, status=404)
+    
+    # ユーザーのすべてのチャットログを取得
+    logs = ChatLog.objects.filter(user=user).order_by("created_at")
+    
+    conversation = []
+    for log in logs:
+        conversation.append({
+            "role": log.role,
+            "message": log.message,
+            "created_at": log.created_at.isoformat()
+        })
+    
+    response = JsonResponse({
+        "user_name": user.name,
+        "user_id": user.user_id,
+        "conversation": conversation
+    }, json_dumps_params={"ensure_ascii": False})
+    
+    response["Content-Disposition"] = f'attachment; filename="chat_log_{user.anon_id[:8]}.json"'
     return response
 
 

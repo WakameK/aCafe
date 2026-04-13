@@ -9,4 +9,5 @@ urlpatterns = [
     path('chat_api/', views.chat_api, name='chat_api'),
     path('register/', views.register, name='register'),
     path('login/', views.login, name='login'),
+    path('export-chat-log/', views.export_chat_log, name='export_chat_log'),
 ]
