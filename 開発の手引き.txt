@@ -5,6 +5,12 @@ C:\aCertainCafe内で
 .\.venv\Scripts\activate
 で仮想環境へ移動
 
+もし仮想環境が壊れたら……
+Remove-Item C:\aCertainCafe\.venv -Recurse -Force
+して
+python -m venv .venv
+でもっかい作り直し！
+
 python manage.py runserver
 
 仮想環境上で
@@ -17,6 +23,7 @@ import django
 version
 Python 3.14.3
 django 6.0.3
+requests ???
 
 開発メモ
 python manage.py startapp <適当な名前>

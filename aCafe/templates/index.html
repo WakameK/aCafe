@@ -16,13 +16,14 @@
     </div>
 
 
-    <a href="/"><h1>『くまの隠れ家』</h1></a><br>
-    <p>穏やかなBGMが流れている</p><br>
-    <a href="/login">思い出してもらう(ログイン)</a><br>
-    <a href="/profile">あなたの事</a><br>
-    <a href="/chat">カフェのマスターと話す</a><br>
-    <a href="/atelier">女性のアトリエ</a><br>
-    <a href="{% url 'desk_room' %}">席に座る</a>
-
+        <a href="/"><h1>『くまの隠れ家』</h1></a><br>
+        <p>穏やかなBGMが流れている</p><br>
+    <ul>
+        <li><a href="/login">合言葉(登録とログイン)</a><br>
+        <li><a href="/profile">あなたの事</a><br>
+        <li><a href="/chat">カフェのマスターと話す</a><br>
+        <li><a href="/atelier">女性のアトリエ</a><br>
+        <li><a href="{% url 'desk_room' %}">席に座る</a>
+    </ul>
 
 {% endblock %}
