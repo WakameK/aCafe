@@ -5,38 +5,26 @@
 {% block content %}
 
 
-<div id="chat-box"></div>
-
-<input id="msg" type="text">
-<button onclick="send()">送信</button>
-
 <script>
-function loadMessages() {
-    fetch("/desk/1/messages/")
-        .then(res => res.json())
-        .then(data => {
-            const box = document.getElementById("chat-box");
-            box.innerHTML = "";
-            data.messages.forEach(m => {
-                box.innerHTML += `<div><b>${m.user}</b>: ${m.content}</div>`;
-            });
-        });
-}
+const roomId = "{{ room.id }}";
+const socket = new WebSocket(`ws://${window.location.host}/ws/desk/${roomId}/`);
 
-function send() {
+socket.onmessage = function(e) {
+    const data = JSON.parse(e.data);
+    console.log("received:", data);
+};
+
+function sendMessage() {
     const msg = document.getElementById("msg").value;
-
-    fetch("/desk/1/send/", {
-        method: "POST",
-        headers: {"X-CSRFToken": "{{ csrf_token }}"},
-        body: new URLSearchParams({content: msg})
-    }).then(() => {
-        document.getElementById("msg").value = "";
-        loadMessages();
-    });
+    socket.send(JSON.stringify({
+        "message": msg,
+        "user": "{{ request.anon_user.name }}"
+    }));
 }
-
-setInterval(loadMessages, 2000); // 2秒ごとに更新
 </script>
+
+<input id="msg">
+<button onclick="sendMessage()">送信</button>
+
 
 {% endblock %}
