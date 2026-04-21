@@ -77,6 +77,32 @@ def login_page(request):
 
 
 
+# ========================================================================
+# 合言葉（login_key）を登録・更新する API
+# ========================================================================
+def update_login_key(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "POST で送ってください"}, status=400)
+
+    anon_id = request.COOKIES.get("anon_user_id")
+    if not anon_id:
+        return JsonResponse({"error": "cookie がありません"}, status=400)
+
+    try:
+        user = users.objects.get(anon_id=anon_id)
+    except users.DoesNotExist:
+        return JsonResponse({"error": "ユーザーが存在しません"}, status=400)
+
+    new_key = request.POST.get("login_key")
+    if not new_key:
+        return JsonResponse({"error": "合言葉が空です"}, status=400)
+
+    user.login_key = new_key
+    user.save()
+
+    return JsonResponse({"status": "ok", "message": "合言葉を更新しました"})
+
+
 
 # ========================================================================
 # 再入場処理
