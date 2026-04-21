@@ -284,10 +284,32 @@ def export_chat_log(request):
 
 # =========================================================
 # 情報提供書作成のllm呼び出し
-# =========================================================
-def call_llm_api():
-    
-    
-    
-    
-    return 0
+# views.py
+
+
+def call_llm_api(prompt: dict):
+    """
+    Ollama のローカル LLM に相談シート生成を依頼する関数
+    prompt は dict を想定
+    """
+
+    # prompt(dict) → JSON文字列に変換して LLM に渡す
+    user_content = json.dumps(prompt, ensure_ascii=False)
+
+    payload = {
+        "model": "gemma3:4b",     #後で変える
+        "prompt": user_content,
+        "stream": False        # まとめて返す
+    }
+
+    response = requests.post(
+        "http://localhost:11434/api/generate",
+        json=payload
+    )
+
+    result = response.json()
+
+    # Ollama は "response" キーに生成テキストが入る
+    return {
+        "response": result.get("response", "")
+    }
