@@ -233,6 +233,9 @@ def get_conversation_json(user, limit=30):
     return conversation
 
 
+
+
+
 # ========================================================================
 # デバッグ用のuuid確認関数
 # ========================================================================
@@ -279,6 +282,12 @@ def export_chat_log(request):
     response["Content-Disposition"] = f'attachment; filename="chat_log_{user.anon_id[:8]}.json"'
     return response
 
-
-
-
+# =========================================================
+# 情報提供書作成のllm呼び出し
+# =========================================================
+def call_llm_api():
+    
+    
+    
+    
+    return 0
