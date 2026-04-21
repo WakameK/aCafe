@@ -28,7 +28,7 @@ def index(request):
     anon_id = str(uuid.uuid4())
     user = users.objects.create(
         anon_id=anon_id,
-        name=None,
+        name="お客さん",
         login_key=None
     )
 
@@ -284,7 +284,7 @@ def export_chat_log(request):
 
 # =========================================================
 # 情報提供書作成のllm呼び出し
-# views.py
+# =========================================================
 
 
 def call_llm_api(prompt: dict):
