@@ -12,6 +12,7 @@ prompt = {
     "instruction": f"""
         以下の会話ログから相談シートを作成してください。
         相談シートは、ユーザーの悩みや状況を整理するためのものです。
+        以下の項目を含めて、ユーザーの情報をまとめてください。
             severity = models.IntegerField()                                    #ユーザーの困り度(1~5の整数で大きいほど困っている)
             worries = models.TextField()                         #ユーザーの悩み
             sleepStatus = models.TextField()                     #ユーザーの睡眠状況
