@@ -15,7 +15,7 @@ class characters(models.Model):
     character_id = models.AutoField(primary_key=True)   #自動で1から始まるIDを振る
     name = models.CharField(max_length=20)              #キャラクターの名前   
     age = models.IntegerField()                         #キャラクターの年齢
-    gender = models.IntegerField()               #キャラクターの性別(0:男性, 1:女性, 2:その他)
+    gender = models.IntegerField()                      #キャラクターの性別(0:男性, 1:女性, 2:その他)
     birthday = models.DateField()                       #キャラクターの誕生日
     height = models.IntegerField()                      #キャラクターの身長
     occupation = models.CharField(max_length=20)        #キャラクターの職業
