@@ -1,0 +1,17 @@
+aCafe/
+├── ayaka/
+│   ├── views.py (画像生成機能)
+│   ├── urls.py
+│   └── templates/
+│       └── atelier.html
+├── desk/
+│   ├── views.py (チャット機能)
+│   ├── urls.py
+│   └── templates/
+│       └── room.html
+└── templates/
+    ├── base.html
+    ├── chat.html
+    ├── index.html
+    ├── login.html
+    └── profile.html
