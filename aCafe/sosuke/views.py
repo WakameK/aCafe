@@ -4,7 +4,7 @@
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from .models import users, ChatLog
+from .models import Users, ChatLog
 
 import json
 import requests
@@ -20,13 +20,13 @@ def index(request):
 
     if anon_id:
         try:
-            user = users.objects.get(anon_id=anon_id)
+            user = Users.objects.get(anon_id=anon_id)
             return render(request, "index.html", {"user": user})
-        except users.DoesNotExist:
+        except Users.DoesNotExist:
             pass
 
     anon_id = str(uuid.uuid4())
-    user = users.objects.create(
+    user = Users.objects.create(
         anon_id=anon_id,
         name="お客さん",
         login_key=None
@@ -58,8 +58,8 @@ def register(request):
             return JsonResponse({"error": "cookie がありません"}, status=400)
 
         try:
-            user = users.objects.get(anon_id=anon_id)
-        except users.DoesNotExist:
+            user = Users.objects.get(anon_id=anon_id)
+        except Users.DoesNotExist:
             return JsonResponse({"error": "ユーザーが存在しません"}, status=400)
 
         user.name = request.POST.get("name")
@@ -89,8 +89,8 @@ def update_login_key(request):
         return JsonResponse({"error": "cookie がありません"}, status=400)
 
     try:
-        user = users.objects.get(anon_id=anon_id)
-    except users.DoesNotExist:
+        user = Users.objects.get(anon_id=anon_id)
+    except Users.DoesNotExist:
         return JsonResponse({"error": "ユーザーが存在しません"}, status=400)
 
     new_key = request.POST.get("login_key")
@@ -113,8 +113,8 @@ def login(request):
         key = request.POST.get("login_key")
 
         try:
-            user = users.objects.get(name=name, login_key=key)
-        except users.DoesNotExist:
+            user = Users.objects.get(name=name, login_key=key)
+        except Users.DoesNotExist:
             return JsonResponse({"error": "名前または合言葉が違います"}, status=400)
 
         response = JsonResponse({"status": "ok"})
@@ -139,7 +139,7 @@ def chat_api(request):
     anon_id = request.COOKIES.get("anon_user_id")
     if not anon_id:
         anon_id = str(uuid.uuid4())
-        user = users.objects.create(
+        user = Users.objects.create(
             anon_id=anon_id,
             name="名無し",
             login_key=None
@@ -150,8 +150,8 @@ def chat_api(request):
 
     # ★ ② Cookie がある → DB からユーザー取得
     try:
-        user = users.objects.get(anon_id=anon_id)
-    except users.DoesNotExist:
+        user = Users.objects.get(anon_id=anon_id)
+    except Users.DoesNotExist:
         return JsonResponse({"need_register": True})
 
     # ★ ③ ここから先はあなたの元コードそのまま
@@ -269,7 +269,7 @@ def get_conversation_json(user, limit=30):
 
 def debug_create_user(request):
     anon_id = str(uuid.uuid4())
-    users.objects.create(anon_id=anon_id, name="test", login_key="test")
+    Users.objects.create(anon_id=anon_id, name="test", login_key="test")
     response = JsonResponse({"status": "ok"})
     response.set_cookie("anon_user_id", anon_id)
     return response
@@ -284,8 +284,8 @@ def export_chat_log(request):
         return JsonResponse({"error": "ユーザーが識別できません"}, status=400)
     
     try:
-        user = users.objects.get(anon_id=anon_id)
-    except users.DoesNotExist:
+        user = Users.objects.get(anon_id=anon_id)
+    except Users.DoesNotExist:
         return JsonResponse({"error": "ユーザーが見つかりません"}, status=404)
     
     # ユーザーのすべてのチャットログを取得

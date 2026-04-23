@@ -32,7 +32,7 @@ class characters(models.Model):
 # ========================================================================
 # 来談者(ユーザー)のモデル
 # =========================================================================
-class users(models.Model):
+class Users(models.Model):
     user_id = models.AutoField(primary_key=True)                #自動で1から始まるIDを振る
     anon_id = models.CharField(max_length=50)                   #匿名ID(別デバイスからのログインを識別するため)固定で36文字です
     name = models.CharField(max_length=20)                      #ユーザーの名前
@@ -46,7 +46,7 @@ class users(models.Model):
 # チャットログのモデル
 # ========================================================================
 class ChatLog(models.Model):
-    user = models.ForeignKey(users, on_delete=models.CASCADE)
+    user = models.ForeignKey(Users, on_delete=models.CASCADE)
     role = models.CharField(max_length=20)  # "user" or "sosuke"
     message = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
@@ -59,25 +59,25 @@ class ChatLog(models.Model):
 # ========================================================================
 # 情報提供書のモデル
 # ========================================================================
-class informationSheet(models.Model):
+class InformationSheet(models.Model):
     sheet_id = models.AutoField(primary_key=True)                       #自動で1から始まるIDを振る
-    user_id = models.ForeignKey(users, on_delete=models.CASCADE)        #ユーザーID（外部キー）
+    user_id = models.ForeignKey(Users, on_delete=models.CASCADE)        #ユーザーID（外部キー）
     severity = models.IntegerField()                                    #ユーザーの困り度(1~5の整数で大きいほど困っている)
-    worries = models.CharField(max_length=1000)                         #ユーザーの悩み
-    sleepStatus = models.CharField(max_length=1000)                     #ユーザーの睡眠状況
-    appetiteStatus = models.CharField(max_length=1000)                  #ユーザーの食欲状況
-    functioning = models.CharField(max_length=1000)                     #ユーザーの日常機能
-    physicalSymptoms = models.CharField(max_length=1000)                #ユーザーの身体的症状
-    mentalSymptoms = models.CharField(max_length=1000)                  #ユーザーの精神的症状
-    consultationGoal = models.CharField(max_length=1000)                #薬の相談
-    duration = models.CharField(max_length=500)                         #ユーザーの症状開始からの期間
-    mainComplaint = models.CharField(max_length=1000)                   #ユーザーの主訴
-    changesFromBefore = models.CharField(max_length=1000)               #ユーザーの症状発生以前からの変化
-    cues = models.CharField(max_length=1000)                            #症状が発生するきっかけ
-    timeZone = models.CharField(max_length=1000)                        #症状が発生する時間帯
-    suicidalIdeation = models.CharField(max_length=1000)                #ユーザーの自殺念慮
-    questions = models.CharField(max_length=1000)                       #ユーザーからの質問
-    supportNeeded = models.CharField(max_length=1000)                   #ユーザーが次の診察で必要としている支援
+    worries = models.TextField()                         #ユーザーの悩み
+    sleepStatus = models.TextField()                     #ユーザーの睡眠状況
+    appetiteStatus = models.TextField()                  #ユーザーの食欲状況
+    functioning = models.TextField()                     #ユーザーの日常機能
+    physicalSymptoms = models.TextField()                #ユーザーの身体的症状
+    mentalSymptoms = models.TextField()                  #ユーザーの精神的症状
+    consultationGoal = models.TextField()                #薬の相談
+    duration = models.TextField()                         #ユーザーの症状開始からの期間
+    mainComplaint = models.TextField()                   #ユーザーの主訴
+    changesFromBefore = models.TextField()               #ユーザーの症状発生以前からの変化
+    cues = models.TextField()                            #症状が発生するきっかけ
+    timeZone = models.TextField()                        #症状が発生する時間帯
+    suicidalIdeation = models.TextField()                #ユーザーの自殺念慮
+    questions = models.TextField()                       #ユーザーからの質問
+    supportNeeded = models.TextField()                   #ユーザーが次の診察で必要としている支援
 
     def __str__(self):
-        return f"{self.user_id} - {self.character_id}"
+        return f"{self.user_id} - {self.mainComplaint}"
