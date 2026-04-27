@@ -1,6 +1,61 @@
 """
 設定ファイル読み込みモジュール
 JSONファイル + 環境変数をサポート
+
+=================================================================
+概要
+=================================================================
+
+このモジュールは、JSON設定ファイルから設定値を読み込み、
+環境ごとにオーバーライドできる仕組みを提供します。
+
+ドット記法でネストされた値にアクセスでき、
+環境変数 DJANGO_ENV で動的に環境を切り替えられます。
+
+=================================================================
+使用方法
+=================================================================
+
+① グローバルコンフィグから取得（推奨）:
+   from config.settings_loader import get_config
+   
+   url = get_config('api.pixazo.url')
+   model = get_config('sosuke.listening_chat.model')
+   limit = get_config('chat.recent_messages_limit')
+
+② カスタム環境で読み込む:
+   from config.settings_loader import ConfigLoader
+   
+   test_config = ConfigLoader(env='testing')
+   test_url = test_config.get('api.pixazo.url')
+
+③ デフォルト値を指定:
+   timeout = get_config('api.timeout', default=30)
+
+=================================================================
+設定ファイルの読み込み順序
+=================================================================
+
+1. default.json を読み込み（必須）
+2. 環境別JSON (development.json, production.json) を読み込み
+3. 環境別JSONの値で default.json をマージ（ネスト対応）
+
+例）development.json で 'api.timeout' だけを上書きした場合：
+    - その他の 'api.pixazo.url' などはデフォルト値を使用
+    - 'api.timeout' のみ環境別の値を使用
+
+=================================================================
+環境変数
+=================================================================
+
+DJANGO_ENV: 使用する環境を指定
+  - development (デフォルト)
+  - production
+  - staging
+  - testing
+  その他カスタム環境名
+
+=================================================================
 """
 import json
 import os

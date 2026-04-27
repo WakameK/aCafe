@@ -94,10 +94,36 @@ python manage.py runserver
 - 長いタイムアウト（安定性重視）
 - キャッシュ設定の有効化など
 
-## 🎯 ベストプラクティス
+## 📄 詳細ガイド
 
-✅ **すべきこと**
-- 環境ごとに異なる値は `development.json`/`production.json` に記載
+より詳しい情報は以下のファイルを参照してください：
+
+- **[INDEX.md](INDEX.md)** - configフォルダ内のファイルガイド
+  - 各ファイルの役割と使い方
+  - ファイル間の依存関係
+  - よくある使用シーン
+
+- **[default.json.comments.md](default.json.comments.md)** - 設定値の詳細説明
+  - 各設定キーの説明
+  - タイプ・値・使用箇所
+  - 環境別推奨値
+
+- **[prompt.json.comments.md](prompt.json.comments.md)** - プロンプト設定の詳細説明
+  - Ollama/LLMプロンプトの説明
+  - キャラクター別の設定
+  - 新しいプロンプト追加方法
+
+- **[PROMPT_GUIDE.md](PROMPT_GUIDE.md)** - プロンプト管理ガイド
+  - プロンプト管理システムの概要
+  - 新しいプロンプト追加方法
+
+- **[USAGE_EXAMPLE.py](USAGE_EXAMPLE.py)** - 実装例
+  - 実際の使用コード例
+
+## 🔗 参考資料
+
+- [Django Settings](https://docs.djangoproject.com/en/6.0/topics/settings/)
+- [12 Factor App - Config](https://12factor.net/config)
 - URLやタイムアウトは `default.json` に記載
 - APIキーなどの秘匿情報は `.env` に記載
 
