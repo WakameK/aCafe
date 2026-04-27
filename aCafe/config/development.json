@@ -1,0 +1,11 @@
+{
+  "api": {
+    "pixazo": {
+      "url": "https://api.pixazo.com/v1/image",
+      "timeout": 20
+    }
+  },
+  "chat": {
+    "recent_messages_limit": 50
+  }
+}

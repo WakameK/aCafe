@@ -1,5 +1,8 @@
 from django.shortcuts import render
 from sosuke.models import ChatLog
+from sosuke.views import call_ollama  # 既存の関数をインポート
+from django.http import JsonResponse
+from config.settings_loader import get_config
 import requests
 
 # =======================================================================
@@ -20,16 +23,9 @@ def get_recent_messages(user, limit=20):
 # build_prompt_from_messages: ユーザーの会話内容から画像生成用のプロンプトを作成する関数
 # ====================================================================================================
 def build_prompt_from_messages(messages: str):
-    return f"""
-    以下のユーザーの会話内容を参考にして、
-    「喫茶くまの隠れ家」の世界観に合うイラストを生成するための
-    シンプルで視覚的なプロンプトを作ってください。
-
-    会話内容:
-    {messages}
-
-    出力は画像生成用の短いプロンプトのみ。
-    """
+    system_prompt = get_config('ayaka.image_generation.system_prompt')
+    user_format = get_config('ayaka.image_generation.user_format')
+    return system_prompt + "\n\n" + user_format.format(messages=messages)
 
 # ======================================================================
 # generate_image: プロンプトを元に画像を生成する関数

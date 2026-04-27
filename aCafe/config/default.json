@@ -1,0 +1,27 @@
+{
+  "api": {
+    "pixazo": {
+      "url": "https://api.pixazo.com/v1/image",
+      "model": "sdxl",
+      "timeout": 30
+    }
+  },
+  "image": {
+    "generation": {
+      "width": 1024,
+      "height": 1024
+    }
+  },
+  "chat": {
+    "recent_messages_limit": 20,
+    "date_format": "%Y-%m-%d %H:%M"
+  },
+  "cookie": {
+    "user_id_name": "anon_user_id",
+    "max_age_days": 365,
+    "default_user_name": "お客さん"
+  },
+  "pagination": {
+    "default_limit": 20
+  }
+}
