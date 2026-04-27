@@ -2,7 +2,10 @@
 # WebSocketコンシューマー
 # ============================================================
 from channels.generic.websocket import AsyncWebsocketConsumer
+from channels.db import database_sync_to_async
 import json
+from .models import Room, Message
+from sosuke.models import Users
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -24,17 +27,17 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def receive(self, text_data):
         data = json.loads(text_data)
         message = data["message"]
-        user = data["user"]
+        user_name = data["user"]
 
-        # DB保存（あなたのChatLogモデルに合わせて）
-        # ChatLog.objects.create(user=user, role="user", message=message)
+        # DBにメッセージを保存
+        await self.save_message(self.room_id, user_name, message)
 
         await self.channel_layer.group_send(
             self.room_group_name,
             {
                 "type": "chat_message",
                 "message": message,
-                "user": user,
+                "user": user_name,
             }
         )
 
@@ -43,3 +46,16 @@ class ChatConsumer(AsyncWebsocketConsumer):
             "message": event["message"],
             "user": event["user"],
         }))
+
+    @database_sync_to_async
+    def save_message(self, room_id, user_name, content):
+        try:
+            room = Room.objects.get(id=room_id)
+            user = Users.objects.get(name=user_name)
+            Message.objects.create(
+                room=room,
+                user=user,
+                content=content
+            )
+        except (Room.DoesNotExist, Users.DoesNotExist):
+            pass  # ルームまたはユーザーが見つからない場合は何もしない

@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}{{ room.name }}{% endblock %}
+
+{% block content %}
+<div style="max-width: 700px; margin: 20px auto; padding: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h1 style="margin: 0;">{{ room.name }}</h1>
+        <a href="{% url 'desk_room' %}" style="padding: 8px 15px; background-color: #6c757d; color: white; text-decoration: none; border-radius: 4px;">戻る</a>
+    </div>
+
+    <!-- メッセージ表示エリア -->
+    <div id="messages" style="border: 1px solid #ddd; border-radius: 4px; padding: 15px; height: 400px; overflow-y: auto; margin-bottom: 15px; background-color: #f9f9f9;">
+        <p style="text-align: center; color: #999;">メッセージをロード中...</p>
+    </div>
+
+    <!-- メッセージ入力エリア -->
+    <div style="display: flex; gap: 10px;">
+        <input id="msg" type="text" placeholder="メッセージを入力..." style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+        <button onclick="sendMessage()" style="padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">送信</button>
+    </div>
+</div>
+
+<script>
+const roomId = "{{ room.id }}";
+const socket = new WebSocket(`ws://${window.location.host}/ws/desk/${roomId}/`);
+
+// 初期メッセージをロード
+loadMessages();
+
+socket.onopen = function(e) {
+    console.log('WebSocket connection established');
+};
+
+socket.onmessage = function(e) {
+    const data = JSON.parse(e.data);
+    console.log("received:", data);
+    displayMessage(data);
+};
+
+socket.onerror = function(e) {
+    console.error('WebSocket error:', e);
+};
+
+socket.onclose = function(e) {
+    console.log('WebSocket connection closed');
+};
+
+function loadMessages() {
+    // 既存のメッセージをロード
+    fetch(`/desk/messages/?room_id=${roomId}`)
+        .then(response => response.json())
+        .then(data => {
+            const messagesDiv = document.getElementById('messages');
+            messagesDiv.innerHTML = '';
+            data.messages.forEach(msg => {
+                displayMessage(msg);
+            });
+            scrollToBottom();
+        })
+        .catch(error => console.error('Error loading messages:', error));
+}
+
+function displayMessage(msg) {
+    const messagesDiv = document.getElementById('messages');
+    const messageEl = document.createElement('div');
+    messageEl.style.cssText = 'margin-bottom: 10px; padding: 10px; background-color: white; border-radius: 4px; border-left: 3px solid #007bff;';
+    
+    const nameEl = document.createElement('strong');
+    nameEl.textContent = msg.user;
+    nameEl.style.color = '#007bff';
+    
+    const contentEl = document.createElement('p');
+    contentEl.textContent = msg.content;
+    contentEl.style.cssText = 'margin: 5px 0 0 0;';
+    
+    const timeEl = document.createElement('small');
+    timeEl.textContent = msg.created_at;
+    timeEl.style.color = '#999';
+    
+    messageEl.appendChild(nameEl);
+    messageEl.appendChild(contentEl);
+    messageEl.appendChild(timeEl);
+    
+    messagesDiv.appendChild(messageEl);
+    scrollToBottom();
+}
+
+function scrollToBottom() {
+    const messagesDiv = document.getElementById('messages');
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+function sendMessage() {
+    const msgInput = document.getElementById("msg");
+    const msg = msgInput.value.trim();
+    
+    if (!msg) return;
+
+    // WebSocketで送信
+    socket.send(JSON.stringify({
+        "message": msg,
+        "user": "{{ request.anon_user.name }}"
+    }));
+
+    msgInput.value = '';
+    msgInput.focus();
+}
+
+// Enterキーで送信
+document.getElementById('msg').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+    }
+});
+
+// ページを離れる前にWebSocket接続を閉じる
+window.addEventListener('beforeunload', function() {
+    if (socket) {
+        socket.close();
+    }
+});
+</script>
+{% endblock %}

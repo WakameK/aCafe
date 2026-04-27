@@ -1,30 +1,118 @@
 {% extends "base.html" %}
+{% csrf_token %}
 
 {% block title %}くまの隠れ家{% endblock %}
 
 {% block content %}
+<div style="max-width: 600px; margin: 20px auto; padding: 20px;">
+    <h1>チャットルーム一覧</h1>
+    
+    <div style="margin: 20px 0;">
+        <button onclick="showCreateForm()" style="padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+            新しいルームを作成
+        </button>
+    </div>
 
+    {% if rooms %}
+        <div style="display: grid; gap: 15px;">
+            {% for room in rooms %}
+                <div style="border: 1px solid #ddd; border-radius: 4px; padding: 15px; background-color: #f9f9f9; cursor: pointer; transition: all 0.3s;" 
+                     onmouseover="this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)'" 
+                     onmouseout="this.style.boxShadow='none'"
+                     onclick="location.href='{% url 'desk_chat' room.id %}'">
+                    <h3 style="margin-top: 0; color: #333;">{{ room.name }}</h3>
+                    <p style="margin: 5px 0; color: #666; font-size: 12px;">
+                        作成日時: {{ room.created_at|date:"Y-m-d H:i" }}
+                    </p>
+                    <p style="margin: 5px 0; color: #999; font-size: 12px;">
+                        メッセージ数: {{ room.message_set.count }}
+                    </p>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div style="text-align: center; padding: 40px 20px; color: #999;">
+            <p>チャットルームがまだありません</p>
+            <p>新しいルームを作成してください</p>
+        </div>
+    {% endif %}
+</div>
+
+<!-- ルーム作成フォーム（モーダル的） -->
+<div id="createForm" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0,0,0,0.5); z-index: 1000;">
+    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: white; padding: 30px; border-radius: 8px; width: 90%; max-width: 400px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        <h2>新しいルームを作成</h2>
+        <input id="roomName" type="text" placeholder="ルーム名" style="width: 100%; padding: 8px; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
+        <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+            <button onclick="hideCreateForm()" style="padding: 8px 15px; background-color: #ccc; color: black; border: none; border-radius: 4px; cursor: pointer;">
+                キャンセル
+            </button>
+            <button onclick="createRoom()" style="padding: 8px 15px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                作成
+            </button>
+        </div>
+    </div>
+</div>
 
 <script>
-const roomId = "{{ room.id }}";
-const socket = new WebSocket(`ws://${window.location.host}/ws/desk/${roomId}/`);
-
-socket.onmessage = function(e) {
-    const data = JSON.parse(e.data);
-    console.log("received:", data);
-};
-
-function sendMessage() {
-    const msg = document.getElementById("msg").value;
-    socket.send(JSON.stringify({
-        "message": msg,
-        "user": "{{ request.anon_user.name }}"
-    }));
+function showCreateForm() {
+    document.getElementById('createForm').style.display = 'block';
+    document.getElementById('roomName').focus();
 }
+
+function hideCreateForm() {
+    document.getElementById('createForm').style.display = 'none';
+    document.getElementById('roomName').value = '';
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function createRoom() {
+    const name = document.getElementById('roomName').value.trim();
+    if (!name) {
+        alert('ルーム名を入力してください');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('name', name);
+
+    fetch('{% url "create_room" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'ok') {
+            location.reload();
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+// Enterキーで作成
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('roomName').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            createRoom();
+        }
+    });
+});
 </script>
-
-<input id="msg">
-<button onclick="sendMessage()">送信</button>
-
-
 {% endblock %}

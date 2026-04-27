@@ -1,6 +1,6 @@
 venvを消す
-python -m vent vent
+python -m vent .vent
 pip install django
 pip install requests
-pip install 
+pip install uuid
 

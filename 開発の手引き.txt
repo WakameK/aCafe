@@ -7,7 +7,7 @@ C:\aCertainCafe内で
 
 もし仮想環境が壊れたら……
 Remove-Item C:\aCertainCafe\.venv -Recurse -Force
-して
+して(仮想環境フォルダを壊す)
 python -m venv .venv
 でもっかい作り直し！
 
