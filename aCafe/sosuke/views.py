@@ -249,8 +249,6 @@ def get_conversation_json(user, limit=30):
 # ========================================================================
 # デバッグ用のuuid確認関数
 # ========================================================================
-
-
 def debug_create_user(request):
     anon_id = str(uuid.uuid4())
     Users.objects.create(anon_id=anon_id, name="test", login_key="test")
