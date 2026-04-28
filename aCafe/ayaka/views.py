@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from sosuke.models import ChatLog
-from sosuke.views import call_ollama  # 既存の関数をインポート
+from sosuke.views import call_llm_api  # 既存の関数をインポート
 from django.http import JsonResponse
 from config.settings_loader import get_config
 import requests
@@ -53,7 +53,7 @@ def generate_cafe_image(request):
 
     # 2. プロンプト生成（Ollama）
     prompt_for_llm = build_prompt_from_messages(messages)
-    llm_prompt = call_ollama(prompt_for_llm)  # ← gemma3 で実装済みの関数を使う
+    llm_prompt = call_llm_api({"prompt": prompt_for_llm})  # ← gemma3 で実装済みの関数を使う
 
     # 3. 画像生成APIに投げる
     image_url = generate_image(llm_prompt)
