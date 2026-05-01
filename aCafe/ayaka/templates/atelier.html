@@ -1,18 +1,31 @@
 {% extends "base.html" %}
+{% load static %}
+<link rel="stylesheet" href="{% static 'css/style.css' %}">
 
 {% block title %}"女性"のアトリエ{% endblock %}
 
 {% block content %}
-    <h1>"女性"のアトリエ</h1>
-    <p>"女性"が作ったモノが無造作に置かれている。</p>
+<h1>"女性"のアトリエ</h1>
+<p>"女性"が作ったモノが無造作に置かれている。</p>
 
-    <p>『"持って帰る"も"ぶっ壊す"もご自由にどうぞ！それもうアタシのじゃないから！』</p>
+<p>『"持って帰る"も"ぶっ壊す"もご自由にどうぞ！それもうアタシのじゃないから！』</p>
 
-    <a href="#">持って帰る</a><br>
-    <a href="#">ぶっ壊してみる</a><br>
-    {% comment %} 
-    破壊したものは段々タンクに貯まっていって、
-    いっぱいになると別の全く新しいモノに生まれ変わる。とか 
-    {% endcomment %}
-    <a href="/index">戻る</a><br>
+<a href="#">持って帰る</a><br>
+<a href="#">ぶっ壊してみる</a><br>
+
+<hr>
+
+<h2>作品たち</h2>
+
+<ul class="atelier-images">
+    {% for img in images %}
+        <li>
+            <img src="{{ img }}" alt="作品画像">
+        </li>
+    {% empty %}
+        <li>まだ作品がありません。</li>
+    {% endfor %}
+</ul>
+
+<a href="/index">戻る</a><br>
 {% endblock %}

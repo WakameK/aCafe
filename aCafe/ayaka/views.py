@@ -59,3 +59,15 @@ def generate_cafe_image(request):
     image_url = generate_image(llm_prompt)
 
     return JsonResponse({"image_url": image_url})
+
+
+# =======================================================================
+# 画像をリストで返すビュー関数（例: ギャラリー表示用）
+# =======================================================================
+def atelier_view(request):
+    images = [
+        "https://example.com/img1.png",
+        "https://example.com/img2.png",
+        "https://example.com/img3.png",
+    ]
+    return render(request, "atelier.html", {"images": images})

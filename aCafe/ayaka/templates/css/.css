@@ -1,0 +1,21 @@
+.atelier-images {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.atelier-images li {
+    width: 200px;
+    height: 200px;
+    overflow: hidden;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+}
+
+.atelier-images img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
