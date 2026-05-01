@@ -52,9 +52,7 @@ https://sqlitebrowser.org/dl/
 
 SQLite Viewerという拡張機能をダウンロードしてdbの中身を見てなんかいい感じにしとけ
 
-チャットルームの作成
-Memurai をダウンロード
-https://www.memurai.com/
+
 
 コマンドプロンプトで
 wsl --install
