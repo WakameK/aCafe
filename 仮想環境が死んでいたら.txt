@@ -3,4 +3,4 @@ python -m vent .vent
 pip install django
 pip install requests
 pip install uuid
-
+pip install channels

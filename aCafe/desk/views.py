@@ -9,16 +9,14 @@ from .models import Room, Message
 # 現状は「最初の Room を1つだけ使う」仕様のため、
 # Room.objects.first() を取得してテンプレートに渡す。
 # ---------------------------------------------------------
-def room_view(request):
-    """ハブページ：全チャットルーム一覧を表示"""
-    rooms = Room.objects.all().order_by("-created_at")
-    return render(request, "room.html", {"rooms": rooms})
-
-
 def chat_view(request, room_id):
-    """個別チャットルーム画面"""
     room = Room.objects.get(id=room_id)
-    return render(request, "chat.html", {"room": room})
+    return render(request, "desk/chat.html", {"room": room})
+
+def room_view(request):
+    rooms = Room.objects.all().order_by("-created_at")
+    return render(request, "desk/room.html", {"rooms": rooms})
+
 
 
 # ---------------------------------------------------------
