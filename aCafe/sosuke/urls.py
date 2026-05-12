@@ -10,4 +10,5 @@ urlpatterns = [
     path('register/', views.register, name='register'),
     path('login/', views.login, name='login'),
     path('export-chat-log/', views.export_chat_log, name='export_chat_log'),
+    path('update_name/', views.update_name, name='update_name'),
 ]

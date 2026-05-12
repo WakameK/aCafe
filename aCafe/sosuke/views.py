@@ -123,6 +123,32 @@ def login(request):
         return response
     return render(request, "login.html")
 
+# ========================================================================
+# 名前の更新処理
+# =======================================================================
+def update_name(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "POST で送ってください"}, status=400)
+
+    anon_id = request.COOKIES.get("anon_user_id")
+    if not anon_id:
+        return JsonResponse({"error": "cookie がありません"}, status=400)
+
+    try:
+        user = Users.objects.get(anon_id=anon_id)
+    except Users.DoesNotExist:
+        return JsonResponse({"error": "ユーザーが存在しません"}, status=400)
+
+    new_name = request.POST.get("name")
+    if not new_name:
+        return JsonResponse({"error": "名前が空です"}, status=400)
+
+    user.name = new_name
+    user.save()
+
+    return JsonResponse({"status": "ok", "message": "名前を更新しました"})
+
+
 
 
 # ========================================================================

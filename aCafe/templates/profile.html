@@ -11,6 +11,14 @@
 {% block content %}
     <h1>あなたについて</h1><br>
     <p>オーナーとの会話履歴、そこから作成した情報提供書。持ち帰った女性の作品を閲覧できます。</p><br>
+    <p>あなたの呼ばれたい名前を決めることが出来ます。</p><br>
+    <form method="post" action="{% url 'update_name' %}">
+        {% csrf_token %}
+        <label for="name">あなたの名前:</label>
+        <input type="text" id="name" name="name" value="{{ user_profile.name }}"><br><br>
+        <button type="submit" class="btn btn-primary">更新</button>
+    </form><br>
+
 
     <section>
         <h2>会話履歴</h2>

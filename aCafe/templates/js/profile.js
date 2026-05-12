@@ -43,3 +43,9 @@ function downloadChatLog() {
             statusMsg.style.color = "red";
         });
 }
+
+
+function updateNickname() {
+    const nicknameInput = document.getElementById("nickname");
+    const newNickname = nicknameInput.value.trim();
+}
