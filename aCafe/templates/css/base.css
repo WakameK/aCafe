@@ -1,4 +1,141 @@
+/* ==========================================
+   喫茶店風デザイン - くまの隠れ家
+   ========================================== */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --coffee-dark: #3e2723;
+    --coffee-brown: #6d4c41;
+    --coffee-light: #8d6e63;
+    --cream: #f5f1de;
+    --accent: #c5a572;
+    --text-dark: #2c2c2c;
+    --text-light: #5d4e37;
+}
+
+body {
+    font-family: 'Segoe UI', Trebuchet MS, sans-serif;
+    background: linear-gradient(135deg, #3e2723 0%, #5d4e37 100%);
+    color: var(--text-dark);
+    line-height: 1.6;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ========== ヘッダー ========== */
+header {
+    background: linear-gradient(to right, var(--coffee-dark), var(--coffee-brown));
+    color: var(--cream);
+    padding: 2rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    border-bottom: 3px solid var(--accent);
+}
+
+header h1 {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+}
+
+header h1 a {
+    color: var(--cream);
+    text-decoration: none;
+    transition: color 0.3s ease;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+header h1 a:hover {
+    color: var(--accent);
+}
+
+header nav ul {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+}
+
 header nav ul li {
     display: inline-block;
-    margin-right: 20px;
+}
+
+header nav ul li a {
+    color: var(--cream);
+    text-decoration: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+    font-size: 0.95rem;
+}
+
+header nav ul li a:hover {
+    background-color: var(--accent);
+    color: var(--coffee-dark);
+    transform: translateY(-2px);
+}
+
+/* ========== メインコンテンツ ========== */
+main {
+    flex: 1;
+    padding: 3rem 2rem;
+    background: var(--cream);
+    margin: 1rem;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+main h1 {
+    color: var(--coffee-dark);
+    margin-bottom: 1rem;
+    font-size: 2rem;
+    border-bottom: 3px solid var(--accent);
+    padding-bottom: 0.5rem;
+}
+
+main h2 {
+    color: var(--coffee-brown);
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+main p {
+    color: var(--text-light);
+    margin-bottom: 1rem;
+    font-size: 1.05rem;
+}
+
+/* ========== フッター ========== */
+footer {
+    background: linear-gradient(to right, var(--coffee-dark), var(--coffee-brown));
+    color: var(--cream);
+    text-align: center;
+    padding: 2rem;
+    border-top: 3px solid var(--accent);
+    box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.3);
+}
+
+footer hr {
+    border: none;
+    border-top: 1px solid var(--accent);
+    margin-bottom: 1rem;
+}
+
+/* ========== リンク ========== */
+a {
+    color: var(--coffee-brown);
+    text-decoration: none;
+    transition: color 0.3s ease;
+    font-weight: 600;
+}
+
+a:hover {
+    color: var(--accent);
+    text-decoration: underline;
 }
