@@ -8,8 +8,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const staticUrl = window.STATIC_URL || "/static/";
     const introImage = document.getElementById("intro-image");
     const introScreen = document.getElementById("intro-screen");
-    const step1 = staticUrl + "images/step1.jpg";
-    const step2 = staticUrl + "images/step2.jpg";
+    const step1 = staticUrl + "static/images/step1.png";
+    const step2 = staticUrl + "static/images/step2.png";
 
     // 先読みしてスムーズに切り替える
     [step1, step2].forEach(src => {
