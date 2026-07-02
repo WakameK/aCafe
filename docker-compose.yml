@@ -1,0 +1,67 @@
+version: "3.9"
+
+services:
+  redis:
+    image: redis:7.4.0
+    container_name: redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: django_web
+    env_file:
+      - .env
+    environment:
+      - DJANGO_SETTINGS_MODULE=sosuke.settings
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - redis
+    volumes:
+      - .:/app:rw
+      - static_volume:/app/static
+      - ./db.sqlite3:/app/db.sqlite3
+    ports:
+      - "8000:8000"
+    command: ["daphne", "-b", "0.0.0.0", "-p", "8000", "sosuke.asgi:application"]
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: django_worker
+    env_file:
+      - .env
+    environment:
+      - DJANGO_SETTINGS_MODULE=sosuke.settings
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - redis
+    volumes:
+      - .:/app:rw
+      - ./db.sqlite3:/app/db.sqlite3
+    command: ["python", "manage.py", "runworker", "--verbosity", "1"]
+
+  # Optional Ollama service
+  # Ollama はローカルで動かすことが多いので、必要ならコメントアウトを外して使ってください
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/var/lib/ollama
+    # 環境変数や追加設定は Ollama ドキュメントに従ってください
+
+volumes:
+  redis_data:
+  static_volume:
+  ollama_data:

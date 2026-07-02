@@ -111,14 +111,11 @@ AUTH_PASSWORD_VALIDATORS = [
 # ASGIとChannelsの設定
 # ===============================================
 
-ASGI_APPLICATION = "project_name.asgi.application"
-
+ASGI_APPLICATION = "sosuke.asgi.application"
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {
-            "hosts": [("localhost", 6379)],
-        },
+        "CONFIG": {"hosts": [("redis", 6379)]},
     },
 }
 
