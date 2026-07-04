@@ -1,0 +1,10 @@
+# このプロジェクトで使用されるパッケージ
+# ここに書いてドッカ―を起動するとインストールがいい感じになる
+
+Django
+channels
+daphne
+channels-redis
+redis
+requests
+asgiref
