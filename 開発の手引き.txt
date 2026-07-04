@@ -1,3 +1,27 @@
+dockerを導入したので開発手引きが変わります
+dockerを起動
+
+dockerの中に入る
+docker container exec -it acafe bash
+
+Django のコードを触る
+→ web
+docker container exec -it web bash
+
+Channels の worker のログを見たい
+→ worker
+docker container exec -it worker bash
+
+Redis の中身を確認したい
+→ redis
+docker container exec -it redis bash
+
+Ollama のモデルを追加したい
+→ ollama
+docker container exec -it ollama bash
+
+
+
 仮想環境設定
 python -m venv .venv
 で作って

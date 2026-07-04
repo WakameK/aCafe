@@ -19,6 +19,7 @@ services:
       - .env
     environment:
       DJANGO_SETTINGS_MODULE: mysite.settings
+      PYTHONPATH: /app
       REDIS_HOST: redis
       REDIS_PORT: 6379
       DJANGO_COLLECTSTATIC: "true"
@@ -41,6 +42,7 @@ services:
       - .env
     environment:
       DJANGO_SETTINGS_MODULE: mysite.settings
+      PYTHONPATH: /app
       REDIS_HOST: redis
       REDIS_PORT: 6379
     depends_on:
@@ -48,8 +50,7 @@ services:
     volumes:
       - ./aCafe:/app:rw
       - ./aCafe/db.sqlite3:/app/db.sqlite3
-    command: ["python", "manage.py", "runworker", "--verbosity", "1"]
-
+    command: ["python", "manage.py", "runworker", "desk", "--verbosity", "1"]
   ollama:
     image: ollama/ollama:latest
     container_name: ollama

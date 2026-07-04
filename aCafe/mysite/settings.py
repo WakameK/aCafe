@@ -35,12 +35,14 @@ ALLOWED_HOSTS = [host.strip() for host in os.environ.get('ALLOWED_HOSTS', 'local
 # Application definition
 
 INSTALLED_APPS = [
+    "daphne",  # channelsを使う場合、通常一番上に書く
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    "channels",
     "sosuke",    # sosukeアプリをインストール
     "ayaka",     # ayakaアプリをインストール
     "desk",      # deskアプリをインストール
@@ -116,10 +118,12 @@ ASGI_APPLICATION = "mysite.asgi.application"
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {"hosts": [(os.environ.get('REDIS_HOST', 'redis'), int(os.environ.get('REDIS_PORT', '6379')))]},
+        "CONFIG": {
+            "hosts": [os.environ.get("REDIS_URL", "redis://redis:6379/0")],
+            "symmetric_encryption_keys": [SECRET_KEY],  # 接続の互換性を安定させる
+        },
     },
 }
-
 
 
 
