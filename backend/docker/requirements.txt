@@ -1,0 +1,7 @@
+Django
+channels
+daphne
+channels-redis
+redis
+requests
+asgiref

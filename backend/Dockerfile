@@ -1,4 +1,3 @@
-
 FROM python:3.13-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -13,12 +12,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       curl \
     && rm -rf /var/lib/apt/lists/*
 
-COPY docker/requirements.txt /tmp/requirements.txt
+COPY ./docker/requirements.txt /tmp/requirements.txt
 RUN pip install --upgrade pip && pip install --no-cache-dir -r /tmp/requirements.txt
 
 COPY ./aCafe/ .
-COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh && mkdir -p /app/staticfiles
+COPY ./entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh && mkdir -p /app/staticfiles /app/data
 
 RUN useradd --create-home --uid 1000 appuser \
     && chown -R appuser:appuser /app

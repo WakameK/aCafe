@@ -1,0 +1,41 @@
+.form {
+  display: grid;
+  gap: 1rem;
+  max-width: 420px;
+}
+
+.field {
+  display: grid;
+  gap: 0.4rem;
+  color: #5d4e37;
+  font-weight: 600;
+}
+
+.field input {
+  padding: 0.8rem 1rem;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.actions button {
+  border: none;
+  background: linear-gradient(135deg, #c5a572 0%, #a68a64 100%);
+  color: white;
+  padding: 0.8rem 1.2rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.secondaryButton {
+  background: #e8dcc8 !important;
+  color: #3e2723 !important;
+}

@@ -1,0 +1,39 @@
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin: 1rem 0 1.5rem;
+}
+
+.actions a {
+  color: #3e2723;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.heading {
+  margin: 1.5rem 0 1rem;
+  color: #3e2723;
+}
+
+.atelierImages {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.atelierImages li {
+  width: 200px;
+  height: 200px;
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+.atelierImages img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}

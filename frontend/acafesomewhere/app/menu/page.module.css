@@ -1,0 +1,11 @@
+.card {
+  padding: 1.5rem;
+  background: #fffef9;
+  border: 1px solid #e0d4bb;
+  border-radius: 8px;
+}
+
+.card p {
+  margin: 0 0 0.75rem;
+  color: #5d4e37;
+}

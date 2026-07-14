@@ -29,8 +29,7 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-&9qxt6h0jb6n4yq=$c1hs
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'True').lower() in {'1', 'true', 'yes', 'on'}
 
-ALLOWED_HOSTS = [host.strip() for host in os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if host.strip()]
-
+ALLOWED_HOSTS = ["*"]
 
 # Application definition
 
@@ -84,10 +83,12 @@ WSGI_APPLICATION = 'mysite.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
+DB_PATH = os.environ.get("DB_PATH", str(BASE_DIR / "data" / "db.sqlite3"))
+
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": DB_PATH,
     }
 }
 
@@ -115,12 +116,12 @@ AUTH_PASSWORD_VALIDATORS = [
 # ===============================================
 
 ASGI_APPLICATION = "mysite.asgi.application"
+
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [os.environ.get("REDIS_URL", "redis://redis:6379/0")],
-            "symmetric_encryption_keys": [SECRET_KEY],  # 接続の互換性を安定させる
+            "hosts": [("redis", 6379)],
         },
     },
 }
@@ -144,8 +145,8 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [
     BASE_DIR / 'templates',
     BASE_DIR / 'static',
