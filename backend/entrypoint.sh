@@ -14,4 +14,7 @@ if [ -n "$DJANGO_SUPERUSER_USERNAME" ] && [ -n "$DJANGO_SUPERUSER_PASSWORD" ] &&
   python manage.py createsuperuser --noinput || true
 fi
 
+echo "🚀 Backend (Django) 起動します → http://localhost:8000"
+echo "🌐 Frontend (Next.js) は → http://localhost:3000"
+
 exec "$@"
