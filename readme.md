@@ -109,6 +109,8 @@
 
 このアプリケーションが参照したメンタルヘルスに関するソースです。
 
-[ここにソースの具体的な名称](url)
+[精神障害をもつ人が行うピアサポート活動前後の
+心理的変容
+]([url](https://medbiol.sabsnpo.org/EJ3/index.php/MedBiol/article/download/383/340))
 []()
 </details>
