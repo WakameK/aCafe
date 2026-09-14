@@ -1,4 +1,12 @@
+# くまの隠れ家
+
 ---
+
+## 🗂️ Tabs
+
+<details>
+  <summary><strong>This Café</strong></summary>
+
 ### ■ これは何か  
 くまの隠れ家は、  
 **独りぼっちを作らないためのサービス**です。
@@ -66,4 +74,34 @@
 「ただ話を聞いてほしい」という願いを  
 真剣に扱うためのプロダクトです。
 
+</details>
+
 ---
+
+<details>
+  <summary><strong>Architecture</strong></summary>
+
+ここにアーキテクチャ説明を書く  
+（例：Django + Channels + Redis + Ollama の構成図など）
+
+</details>
+
+---
+
+<details>
+  <summary><strong>API</strong></summary>
+
+ここに API 仕様を書く  
+（例：`POST /v1/chat`、`GET /v1/health` など）
+
+</details>
+
+---
+
+<details>
+  <summary><strong>Deployment</strong></summary>
+
+ここにデプロイ方法を書く  
+（例：Docker Compose / Railway / Render / Fly.io）
+
+</details>
