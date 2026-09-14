@@ -2,8 +2,6 @@
 
 ---
 
-## 🗂️ Tabs
-
 <details>
   <summary><strong>This Café</strong></summary>
 
@@ -103,5 +101,14 @@
 
 ここにデプロイ方法を書く  
 （例：Docker Compose / Railway / Render / Fly.io）
+</details>
 
+---
+<details>
+  <summary><strong>Sources</strong></summary>
+
+このアプリケーションが参照したメンタルヘルスのソースです。
+
+[ここにソースの具体的な名称](url)
+[]()
 </details>
