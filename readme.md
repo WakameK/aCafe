@@ -127,13 +127,4 @@ WakameKが個人的に執筆している小説の世界観を背景に持つ大�
 </details>
 
 ---
-<details>
-  <summary><strong>Sources</strong></summary>
 
-このアプリケーションが参照したメンタルヘルスに関するソースです。
-
-[精神障害をもつ人が行うピアサポート活動前後の 心理的変容](https://medbiol.sabsnpo.org/EJ3/index.php/MedBiol/article/download/383/340)<br>
-[日本における AI 技術を用いた心理的介入の現状と課題：スコーピングレビュー](https://www.jstage.jst.go.jp/article/jjbm/30/2/30_56/_pdf/-char/ja)<br>
-
-
-</details>
