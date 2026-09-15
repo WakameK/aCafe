@@ -17,7 +17,9 @@ RUN pip install --upgrade pip && pip install --no-cache-dir -r /tmp/requirements
 
 COPY ./aCafe/ .
 COPY ./entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh && mkdir -p /app/staticfiles /app/data
+RUN sed -i 's/\r$//' /usr/local/bin/entrypoint.sh \
+    && chmod +x /usr/local/bin/entrypoint.sh \
+    && mkdir -p /app/staticfiles /app/data
 
 RUN useradd --create-home --uid 1000 appuser \
     && chown -R appuser:appuser /app
