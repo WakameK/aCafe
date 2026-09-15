@@ -1,14 +1,23 @@
-/* ベースカラー（木目・カフェ系） */
 :root {
-  --bg: #f7f3e9;
-  --text: #4a3f35;
-  --accent: #c49a6c;
+  --bg: #181512;
+  --text: #f6eee2;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--bg);
 }
 
 body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: 'Noto Sans JP', sans-serif;
+  min-width: 320px;
   margin: 0;
-  padding: 0;
+  color: var(--text);
+  font-family: "Yu Gothic", "Hiragino Kaku Gothic ProN", sans-serif;
+}
+
+a {
+  color: inherit;
 }
