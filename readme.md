@@ -128,3 +128,5 @@ WakameKが個人的に執筆している小説の世界観を背景に持つ大�
 
 ---
 
+[参考文献の一覧](https://github.com/WakameK/aCertainCafe/blob/master/REFERENCES.md)
+
