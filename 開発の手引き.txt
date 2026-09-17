@@ -3,6 +3,17 @@ dockerを起動
 
 dockerの中に入る
 docker container exec -it acafe bash
+┗docker内にollamaのアダプターを置く
+
+PS C:\Users\black> docker exec -it ollama bash
+root@63e5d58d3039:/# ls /root/.ollama
+cache  id_ed25519  id_ed25519.pub  models
+
+
+
+
+
+
 
 Django のコードを触る
 → web
