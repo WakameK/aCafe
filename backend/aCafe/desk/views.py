@@ -1,91 +1,103 @@
-from django.shortcuts import render
+import json
+
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 from django.http import JsonResponse
-from .models import Room, Message
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
 
-# ---------------------------------------------------------
-# room_view
-# ---------------------------------------------------------
-# チャットルーム画面を表示するビュー。
-# 現状は「最初の Room を1つだけ使う」仕様のため、
-# Room.objects.first() を取得してテンプレートに渡す。
-# ---------------------------------------------------------
-def chat_view(request, room_id):
-    room = Room.objects.get(id=room_id)
-    return render(request, "desk/chat.html", {"room": room})
-
-def room_view(request):
-    rooms = Room.objects.all().order_by("-created_at")
-    return render(request, "desk/room.html", {"rooms": rooms})
+from sosuke.models import Users
+from . import ai_manager
+from .models import DrinkGift, Message, Room
 
 
+def _room_to_dict(room):
+    return {
+        "id": room.id,
+        "name": room.name,
+        "topic": room.topic,
+        "mode": room.mode,
+        "atmosphere_summary": room.atmosphere_summary,
+        "active_characters": [c.name for c in room.active_characters.all()],
+    }
 
-# ---------------------------------------------------------
-# send_message
-# ---------------------------------------------------------
-# POSTされたメッセージを現在のルームに保存する。
-# 匿名ユーザー(request.anon_user)を利用しているため、
-# ログイン不要でメッセージ投稿が可能。
-# 成功時は {"status": "ok"} を返す。
-# ---------------------------------------------------------
-def send_message(request):
-    user = request.anon_user
-    content = request.POST.get("content")
-    room_id = request.POST.get("room_id")
 
+@csrf_exempt
+@require_http_methods(["GET", "POST"])
+def rooms(request):
+    if request.method == "GET":
+        data = [_room_to_dict(r) for r in Room.objects.all().prefetch_related("active_characters")]
+        return JsonResponse({"rooms": data})
+
+    body = json.loads(request.body or "{}")
+    room = Room.objects.create(
+        name=body.get("name", "無題の部屋"),
+        topic=body.get("topic", ""),
+        mode=body.get("mode", Room.MODE_TALK),
+    )
+    return JsonResponse(_room_to_dict(room), status=201)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def regenerate_atmosphere(request, room_id):
     try:
-        room = Room.objects.get(id=room_id)
+        room = Room.objects.get(pk=room_id)
     except Room.DoesNotExist:
-        return JsonResponse({"status": "error", "message": "ルームが見つかりません"})
+        return JsonResponse({"error": "room not found"}, status=404)
 
-    Message.objects.create(
-        room=room,
-        user=user,
-        content=content
+    recent = Message.objects.filter(room_id=room_id).order_by("-created_at")[:20]
+    recent_text = ai_manager.format_recent_messages(reversed(list(recent)))
+    summary = ai_manager.generate_room_atmosphere_summary(room, recent_text)
+
+    room.atmosphere_summary = summary
+    from django.utils import timezone
+    room.atmosphere_updated_at = timezone.now()
+    room.save(update_fields=["atmosphere_summary", "atmosphere_updated_at"])
+
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        f"room_{room_id}",
+        {"type": "chat.atmosphere", "summary": summary},
+    )
+    return JsonResponse({"summary": summary})
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def send_gift(request, room_id):
+    body = json.loads(request.body or "{}")
+    try:
+        from_user = Users.objects.get(pk=body["from_user_id"])
+    except (KeyError, Users.DoesNotExist):
+        return JsonResponse({"error": "from_user_id is required and must exist"}, status=400)
+
+    to_user = None
+    if body.get("to_user_id"):
+        try:
+            to_user = Users.objects.get(pk=body["to_user_id"])
+        except Users.DoesNotExist:
+            return JsonResponse({"error": "to_user_id does not exist"}, status=400)
+
+    gift = DrinkGift.objects.create(
+        room_id=room_id,
+        from_user=from_user,
+        to_user=to_user,
+        item_name=body.get("item_name", "コーヒー"),
+        message=body.get("message", ""),
     )
 
-    return JsonResponse({"status": "ok"})
+    gift_data = {
+        "id": gift.id,
+        "from_user": from_user.name,
+        "to_user": to_user.name if to_user else None,
+        "item_name": gift.item_name,
+        "message": gift.message,
+    }
 
-
-# ---------------------------------------------------------
-# get_messages
-# ---------------------------------------------------------
-# 現在のルームに紐づくメッセージ一覧を取得し、
-# JSON形式で返すAPI。
-# created_at は "YYYY-MM-DD HH:MM" 形式に整形。
-# ---------------------------------------------------------
-def get_messages(request):
-    room_id = request.GET.get("room_id")
-    if not room_id:
-        return JsonResponse({"messages": []})
-    
-    try:
-        room = Room.objects.get(id=room_id)
-    except Room.DoesNotExist:
-        return JsonResponse({"messages": []})
-    
-    messages = Message.objects.filter(room=room)
-
-    data = [
-        {
-            "user": msg.user.name,
-            "content": msg.content,
-            "created_at": msg.created_at.strftime("%Y-%m-%d %H:%M")
-        }
-        for msg in messages
-    ]
-
-    return JsonResponse({"messages": data})
-
-
-# ---------------------------------------------------------
-# create_room
-# ---------------------------------------------------------
-# 新しいチャットルームを作成するAPI。
-# POSTで送られた name を使って Room を作成し、
-# 生成された room_id を JSON で返す。
-# ---------------------------------------------------------
-def create_room(request):
-    if request.method == "POST":
-        name = request.POST.get("name")
-        room = Room.objects.create(name=name)
-        return JsonResponse({"status": "ok", "room_id": room.id})
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        f"room_{room_id}",
+        {"type": "chat.gift", "gift": gift_data},
+    )
+    return JsonResponse(gift_data, status=201)

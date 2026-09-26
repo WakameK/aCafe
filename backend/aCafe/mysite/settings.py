@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    "corsheaders",  # Next.jsフロントとの通信を許可するために追加
     "channels",
     "sosuke",    # sosukeアプリをインストール
     "ayaka",     # ayakaアプリをインストール
@@ -48,9 +49,9 @@ INSTALLED_APPS = [
 ]
 
 
-
-
 MIDDLEWARE = [
+    # CorsMiddlewareはできるだけ上、CommonMiddlewareより前に置く
+    "corsheaders.middleware.CorsMiddleware",
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -126,8 +127,32 @@ CHANNEL_LAYERS = {
     },
 }
 
+# ===============================================
+# Ollama
+# ===============================================
+# docker-compose.ymlの"ollama"サービス名で名前解決される想定。
+# entrypoint.shがhost.docker.internalをデフォルトにしているので、
+# もしホスト側で動いているOllamaを使いたい場合はそちらを、
+# docker-compose内のollamaコンテナを使いたい場合はこちらを、必ずどちらかに揃えてください。
+OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://ollama:11434")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama3")
 
+# ===============================================
+# CORS / CSRF (Next.jsフロントエンドとの通信用)
+# ===============================================
+# 開発中はフロントのオリジンを明示的に許可する。本番では実際のドメインに差し替える。
+CORS_ALLOWED_ORIGINS = os.environ.get(
+    "CORS_ALLOWED_ORIGINS", "http://localhost:3000"
+).split(",")
 
+CSRF_TRUSTED_ORIGINS = os.environ.get(
+    "CSRF_TRUSTED_ORIGINS", "http://localhost:3000"
+).split(",")
+
+# WebSocketの接続元チェック(mysite/asgi.pyのOriginValidatorで使用)
+WS_ALLOWED_ORIGINS = os.environ.get(
+    "WS_ALLOWED_ORIGINS", "http://localhost:3000"
+).split(",")
 
 
 # Internationalization
