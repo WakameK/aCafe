@@ -172,7 +172,7 @@ def generate_ambient_exchange(character_a: Character, character_b: Character, ro
     return exchange
 
 
-def generate_room_atmosphere_summary(room, recent_messages_text: str) -> str:
+def generate_room_atmosphere_summary(room, recent_messages_text: str, timeout=60) -> str:
     """オーナーAI視点で「この部屋はこんな空気です」を短く要約する。"""
     client = OllamaClient()
     prompt = f"""あなたは「くまの隠れ家」というチャット空間のオーナーです。
@@ -184,7 +184,7 @@ def generate_room_atmosphere_summary(room, recent_messages_text: str) -> str:
 直近の会話:
 {recent_messages_text or "(まだ発言がありません)"}
 
-新しく入ってきた人が一目で「ここはこんな空気なんだ」と分かるように、
-2〜3文でこの部屋の雰囲気を要約してください。会話の内容を暴露しすぎず、
+席を探している人が一目で「ここはこんな空気なんだ」と分かるように、
+1〜2文の軽い文章でこの席の雰囲気を伝えてください。会話の内容を暴露しすぎず、
 トーンや空気感を伝えることを優先してください。"""
-    return client.chat([{"role": "user", "content": prompt}], temperature=0.5)
+    return client.chat([{"role": "user", "content": prompt}], temperature=0.5, timeout=timeout)

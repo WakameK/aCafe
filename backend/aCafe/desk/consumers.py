@@ -1,13 +1,17 @@
 import asyncio
+import logging
 import random
 
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
+from django.conf import settings
 from django.db import transaction
 
 from sosuke.models import Users
 from .models import Room, Message
-from . import ai_manager
+from . import ai_manager, seats
+
+logger = logging.getLogger(__name__)
 
 
 class RoomConsumer(AsyncJsonWebsocketConsumer):
@@ -35,32 +39,34 @@ class RoomConsumer(AsyncJsonWebsocketConsumer):
 
         self.user = await self._get_or_create_user(self.anon_id)
 
+        # 席の定員を超えていたら入れない(座席に紐づくチャット空間のみ)
+        if not await self._try_enter(self.room_id):
+            await self.close(code=4403)
+            return
+        self.entered = True
+
         await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
-        await self._increment_human_count(self.room_id)
 
         await self.channel_layer.group_send(
             self.group_name,
             {"type": "chat.presence", "event": "join", "user": self.user.name},
         )
 
-        # 部屋にAIキャラが1人もいない場合だけ、フォールバックとしてAI入室をスケジュールする
-        # (通常は simulate_ambient_life コマンドが定期的に無人の部屋を埋めているはずなので、
-        #  ここはサーバー起動直後などレアケース用の保険)
+        # 一人で座っているのにAIキャラもいない場合、しばらくしてからAIキャラが入ってくる
         should_schedule = await self._claim_ai_join_if_needed(self.room_id)
         if should_schedule:
             asyncio.ensure_future(self._delayed_ai_join(self.room_id))
 
     async def disconnect(self, close_code):
-        if hasattr(self, "group_name"):
+        if getattr(self, "entered", False):
             await self.channel_layer.group_discard(self.group_name, self.channel_name)
-            if hasattr(self, "room_id"):
-                await self._decrement_human_count(self.room_id)
-            if hasattr(self, "user"):
-                await self.channel_layer.group_send(
-                    self.group_name,
-                    {"type": "chat.presence", "event": "leave", "user": self.user.name},
-                )
+            await self._decrement_human_count(self.room_id)
+            await database_sync_to_async(seats.release_room_if_empty)(self.room_id)
+            await self.channel_layer.group_send(
+                self.group_name,
+                {"type": "chat.presence", "event": "leave", "user": self.user.name},
+            )
 
     async def receive_json(self, content, **kwargs):
         msg_type = content.get("type", "chat.message")
@@ -109,11 +115,11 @@ class RoomConsumer(AsyncJsonWebsocketConsumer):
     # --- AI入室のスケジューリング ---
 
     async def _delayed_ai_join(self, room_id):
-        delay = random.uniform(30, 60)
-        await asyncio.sleep(delay)
+        low, high = getattr(settings, "DESK_LONELY_JOIN_SECONDS", (30, 60))
+        await asyncio.sleep(random.uniform(low, high))
 
-        still_occupied = await self._room_has_members(room_id)
-        if not still_occupied:
+        # まだ一人きりのときだけ入ってくる(誰かと相席になっていたり、席を離れていたら何もしない)
+        if not await self._room_has_lone_human(room_id):
             await self._release_ai_join_flag(room_id)
             return
 
@@ -130,6 +136,7 @@ class RoomConsumer(AsyncJsonWebsocketConsumer):
                 "user": character.name,
             },
         )
+        await self._ai_reply(room_id, [character])
 
     # --- AIの返信トリガー ---
 
@@ -155,14 +162,25 @@ class RoomConsumer(AsyncJsonWebsocketConsumer):
             # 話したいモードでは、参加中のキャラ全員がそれぞれ反応候補になる
             responders = active_characters
 
+        await self._ai_reply(room_id, responders)
+
+    async def _ai_reply(self, room_id, responders):
         recent_text = await self._get_recent_messages_text(room_id)
 
         for character in responders:
             # 衝動的に即返す/一拍置くを疑似的なランダム遅延で表現する
             await asyncio.sleep(random.uniform(0.5, 2.5))
-            reply_text = await database_sync_to_async(ai_manager.generate_character_reply)(
-                character, recent_text
-            )
+            try:
+                reply_text = await database_sync_to_async(ai_manager.generate_character_reply)(
+                    character, recent_text
+                )
+            except Exception:
+                # Ollama停止など。キャラが「今日は調子が悪くて話せない」だけで、接続は落とさない
+                logger.warning("AI reply failed for %s", character.name, exc_info=True)
+                continue
+            reply_text = (reply_text or "").strip()
+            if not reply_text:
+                continue
             message = await self._save_ai_message(room_id, character, reply_text)
             await self.channel_layer.group_send(
                 f"room_{room_id}",
@@ -197,7 +215,7 @@ class RoomConsumer(AsyncJsonWebsocketConsumer):
     def _claim_ai_join_if_needed(self, room_id):
         with transaction.atomic():
             room = Room.objects.select_for_update().get(pk=room_id)
-            if room.ai_join_scheduled or room.active_characters.exists():
+            if room.human_count != 1 or room.ai_join_scheduled or room.active_characters.exists():
                 return False
             room.ai_join_scheduled = True
             room.save(update_fields=["ai_join_scheduled"])
@@ -208,11 +226,16 @@ class RoomConsumer(AsyncJsonWebsocketConsumer):
         Room.objects.filter(pk=room_id).update(ai_join_scheduled=False)
 
     @database_sync_to_async
-    def _increment_human_count(self, room_id):
+    def _try_enter(self, room_id):
+        """人数を1増やして入室する。座席に紐づく部屋で定員いっぱいなら False。"""
         with transaction.atomic():
             room = Room.objects.select_for_update().get(pk=room_id)
+            seat = getattr(room, "seat", None)
+            if seat is not None and room.human_count >= seat.capacity:
+                return False
             room.human_count += 1
             room.save(update_fields=["human_count"])
+            return True
 
     @database_sync_to_async
     def _decrement_human_count(self, room_id):
@@ -222,9 +245,9 @@ class RoomConsumer(AsyncJsonWebsocketConsumer):
             room.save(update_fields=["human_count"])
 
     @database_sync_to_async
-    def _room_has_members(self, room_id):
+    def _room_has_lone_human(self, room_id):
         room = Room.objects.filter(pk=room_id).first()
-        return bool(room and room.human_count > 0)
+        return bool(room and room.human_count == 1)
 
     @database_sync_to_async
     def _pick_and_attach_character(self, room):
