@@ -24,16 +24,37 @@
 
 ## 席の状態
 
-`Seat.room` が席に紐づく現在のチャット空間。`Room.human_count`(WebSocket接続数)と `Seat.sat_at` から状態を決める。
+`Seat.room` が席に紐づく現在のチャット空間。在席数(`Presence`)と `Seat.sat_at` から状態を決める。
 
 | 状態 | 条件 |
 |---|---|
-| vacant(空席) | room が無い / 人が0人で、最後に座ってから猶予(`DESK_SIT_GRACE_SECONDS`, 既定30秒)を過ぎた |
+| vacant(空席) | room が無い / 在席が0人で、座った直後の予約(`DESK_SIT_GRACE_SECONDS`, 既定30秒)も無い |
 | occupied | 1人以上いる、または座った直後で猶予内(sit〜WebSocket接続の隙間に席が空きに見えないようにする) |
-| full | `human_count >= capacity` |
+| full | 在席数 `>= capacity` |
 
 空席に座ると新しい `Room` に差し替え、古い部屋のキャラを解放する(古い部屋と発言ログはDBに残る)。
 定員は WebSocket 接続時にも検査する(超過は close code `4403`)。
+
+## 在席の数え方(Presence)
+
+カウンタの増減ではなく、接続ごとの `Presence`(最終確認時刻つき)を数える。
+
+- 入室で作成、クライアントが15秒ごとに `{"type":"ping"}` を送って更新、退室で削除。
+- `DESK_PRESENCE_TTL_SECONDS`(既定120秒)更新が無い行は在席に数えない。サーバーやconsumerが異常終了して
+  `disconnect` が呼ばれなくても、時間が経てば自動で席から外れる(幽霊で満席のままにならない)。
+- 期限切れの行は座席一覧の取得・座る操作のたびに掃除し、無人になった部屋のキャラを解放する。
+- 最後の1人が離れたら、座った直後の予約(`sat_at`)も解除する。離れた直後に「誰かいます/相席する」と出ない。
+
+## 座席の自動追加
+
+座席一覧の取得時と、座った後に、空席が `DESK_MIN_VACANT_SEATS`(既定2)未満なら「テーブル席N」(定員4)を追加する。
+上限は `DESK_MAX_SEATS`(既定30)。追加した席は消さない(空席のまま残る)。
+
+## Redis のタイムアウト
+
+redis-py 8系は `socket_timeout` の既定が5秒になった。channels_redis の待ち受け(`bzpopmin`, 5秒)と同じ長さなので、
+誰も発言しない間に `Timeout reading from redis` でconsumerが落ち、接続が切れる。
+`CHANNEL_LAYERS` の hosts で `socket_timeout: 30` を明示して回避している。
 
 ## 雰囲気ひとことの生成ルール
 
@@ -43,8 +64,8 @@
 
 ## ファイル
 
-- `models.py`: `Seat`(座席)、`Room`、`Message`
-- `seats.py`: 座る・席の状態・雰囲気ひとこと・席の解放
+- `models.py`: `Seat`(座席)、`Presence`(在席)、`Room`、`Message`
+- `seats.py`: 座る・席の状態・在席の管理・座席の追加・雰囲気ひとこと・席の解放
 - `views.py` / `urls.py`: 座席API
 - `consumers.py`: WebSocket(定員検査、一人のときのキャラ入室、AI失敗時も接続を保つ)
 - `migrations/0005_seed_seats.py`: 初期座席(カウンター席×3、テーブル席×2、ソファ席)
@@ -53,5 +74,6 @@
 ## 今後の課題
 
 - `anon_id` は自己申告のまま(なりすまし対策は未対応)。
-- `human_count` は接続数なので、同じ人が複数タブで開くと複数人として数える。
+- 在席は接続数なので、同じ人が複数タブで開くと複数人として数える。
+- 追加した席の自動削除(空席が増えすぎたときの整理)は未対応。
 - 席の一覧はポーリング(10秒)。席の変化をプッシュしたければ専用グループを追加する。

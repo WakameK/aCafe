@@ -9,7 +9,14 @@ from django.views.decorators.http import require_http_methods
 from sosuke.models import Users
 from . import ai_manager
 from .models import DrinkGift, Message, Room, Seat
-from .seats import SeatFullError, get_or_create_guest, seat_to_dict, sit
+from .seats import (
+    SeatFullError,
+    ensure_vacant_seats,
+    get_or_create_guest,
+    purge_stale_presences,
+    seat_to_dict,
+    sit,
+)
 
 
 def _room_to_dict(room):
@@ -111,6 +118,8 @@ def send_gift(request, room_id):
 @require_http_methods(["GET"])
 def seats(request):
     """座席の空き状況。誰かいるか・どんな雰囲気かを、座る前に確認できる。"""
+    purge_stale_presences()
+    ensure_vacant_seats()
     all_seats = Seat.objects.select_related("room").prefetch_related("room__active_characters")
     return JsonResponse({"seats": [seat_to_dict(s) for s in all_seats]})
 

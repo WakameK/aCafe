@@ -30,9 +30,6 @@ class Room(models.Model):
     # 「誰もいない部屋にAIキャラを入れる」ロジックの二重起動防止フラグ
     ai_join_scheduled = models.BooleanField(default=False)
 
-    # 今この部屋に接続している人間の人数(WebSocket接続時/切断時にconsumerが増減させる)
-    human_count = models.PositiveIntegerField(default=0)
-
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -60,6 +57,22 @@ class Message(models.Model):
 
 
 # ====================================
+# 在席(WebSocket接続ごとのリース)
+# ====================================
+
+class Presence(models.Model):
+    """
+    「今この部屋に人間が接続している」ことを表す記録。接続ごとに1行。
+    カウンタの増減ではなく、last_seen が新しい行の数を在席数とする。
+    これにより、サーバーやconsumerが異常終了してdisconnectが呼ばれなくても、
+    しばらくすれば自動的に在席から外れる(幽霊で席が満席のままになるのを防ぐ)。
+    """
+    room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name="presences")
+    channel_name = models.CharField(max_length=200, unique=True)
+    last_seen = models.DateTimeField()
+
+
+# ====================================
 # 座席
 # ====================================
 
@@ -69,7 +82,7 @@ class Seat(models.Model):
 
     - 席に最初の1人が座る → 新しいRoomを作って room に紐づける
     - 2人目以降は、capacity の範囲内で同じRoomに相席する
-    - 全員が離れて(human_count == 0)猶予時間が過ぎた席は「空席」。次に座る人には新しいRoomを作る
+    - 全員が離れた(在席が0人になった)席は「空席」。次に座る人には新しいRoomを作る
     """
     label = models.CharField(max_length=50, unique=True)   # 例: "カウンター1"
     capacity = models.PositiveSmallIntegerField(default=4)  # 同時に座れる人数

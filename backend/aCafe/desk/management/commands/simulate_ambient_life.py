@@ -19,6 +19,7 @@ from django.db import transaction
 
 from desk import ai_manager
 from desk.models import Message, Room
+from desk.seats import live_count
 
 CHAT_PROBABILITY = 0.5   # 既に2人いる部屋で、今回の実行時に雑談させる確率
 LEAVE_PROBABILITY = 0.15  # 既に2人いる部屋で、1人を退室させる確率
@@ -30,9 +31,11 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         channel_layer = get_channel_layer()
         # 座席の部屋は対象外(一人で座った人のところに、しばらくしてからAIが入ってくる体験を壊さないため)
-        empty_rooms = Room.objects.filter(human_count=0, seat__isnull=True).prefetch_related("active_characters")
+        empty_rooms = Room.objects.filter(seat__isnull=True).prefetch_related("active_characters")
 
         for room in empty_rooms:
+            if live_count(room) > 0:
+                continue
             active = list(room.active_characters.all())
 
             if len(active) < 2:

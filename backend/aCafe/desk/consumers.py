@@ -61,8 +61,7 @@ class RoomConsumer(AsyncJsonWebsocketConsumer):
     async def disconnect(self, close_code):
         if getattr(self, "entered", False):
             await self.channel_layer.group_discard(self.group_name, self.channel_name)
-            await self._decrement_human_count(self.room_id)
-            await database_sync_to_async(seats.release_room_if_empty)(self.room_id)
+            await database_sync_to_async(seats.leave)(self.room_id, self.channel_name)
             await self.channel_layer.group_send(
                 self.group_name,
                 {"type": "chat.presence", "event": "leave", "user": self.user.name},
@@ -70,6 +69,11 @@ class RoomConsumer(AsyncJsonWebsocketConsumer):
 
     async def receive_json(self, content, **kwargs):
         msg_type = content.get("type", "chat.message")
+
+        if msg_type == "ping":
+            # クライアントの生存確認。在席を更新する
+            await database_sync_to_async(seats.touch)(self.room_id, self.channel_name)
+            return
 
         if msg_type == "chat.message":
             text = (content.get("message") or "").strip()
@@ -215,7 +219,7 @@ class RoomConsumer(AsyncJsonWebsocketConsumer):
     def _claim_ai_join_if_needed(self, room_id):
         with transaction.atomic():
             room = Room.objects.select_for_update().get(pk=room_id)
-            if room.human_count != 1 or room.ai_join_scheduled or room.active_characters.exists():
+            if seats.live_count(room) != 1 or room.ai_join_scheduled or room.active_characters.exists():
                 return False
             room.ai_join_scheduled = True
             room.save(update_fields=["ai_join_scheduled"])
@@ -227,27 +231,13 @@ class RoomConsumer(AsyncJsonWebsocketConsumer):
 
     @database_sync_to_async
     def _try_enter(self, room_id):
-        """人数を1増やして入室する。座席に紐づく部屋で定員いっぱいなら False。"""
-        with transaction.atomic():
-            room = Room.objects.select_for_update().get(pk=room_id)
-            seat = getattr(room, "seat", None)
-            if seat is not None and room.human_count >= seat.capacity:
-                return False
-            room.human_count += 1
-            room.save(update_fields=["human_count"])
-            return True
-
-    @database_sync_to_async
-    def _decrement_human_count(self, room_id):
-        with transaction.atomic():
-            room = Room.objects.select_for_update().get(pk=room_id)
-            room.human_count = max(0, room.human_count - 1)
-            room.save(update_fields=["human_count"])
+        """在席に加わる。座席に紐づく部屋で定員いっぱいなら False。"""
+        return seats.enter(room_id, self.channel_name)
 
     @database_sync_to_async
     def _room_has_lone_human(self, room_id):
         room = Room.objects.filter(pk=room_id).first()
-        return bool(room and room.human_count == 1)
+        return bool(room and seats.live_count(room) == 1)
 
     @database_sync_to_async
     def _pick_and_attach_character(self, room):

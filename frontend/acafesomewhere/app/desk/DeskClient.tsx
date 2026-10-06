@@ -7,6 +7,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
 const WS_BASE = API_BASE.replace(/^http/, "ws");
 const ANON_ID_KEY = "acafe_anon_id";
 const SEAT_POLL_MS = 10_000;
+const PING_MS = 15_000; // サーバーに在席を知らせる間隔(止まると一定時間後に席から外れる)
 const CLOSE_SEAT_FULL = 4403;
 
 type SeatStatus = "vacant" | "occupied" | "full";
@@ -115,6 +116,10 @@ export default function DeskClient() {
       const socket = new WebSocket(`${WS_BASE}${session.ws_path}`);
       socketRef.current = socket;
 
+      const pinger = setInterval(() => {
+        if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: "ping" }));
+      }, PING_MS);
+
       socket.onmessage = (ev: MessageEvent<string>) => {
         const data: ServerEvent = JSON.parse(ev.data);
         if (data.type === "chat.message") {
@@ -132,6 +137,7 @@ export default function DeskClient() {
       };
 
       socket.onclose = (ev) => {
+        clearInterval(pinger);
         if (socketRef.current !== socket) return; // 自分で席を立った場合
         socketRef.current = null;
         setSitting(null);
@@ -245,7 +251,7 @@ export default function DeskClient() {
               <strong>{seat.label}</strong>
               <span className={styles.badge}>{STATUS_LABEL[seat.status]}</span>
             </div>
-            {seat.status !== "vacant" ? (
+            {seat.human_count > 0 ? (
               <p className={styles.who}>
                 {seat.human_count}人 / {seat.capacity}人
                 {seat.characters.length > 0 ? `・${seat.characters.join("、")} が同席` : ""}
@@ -253,7 +259,7 @@ export default function DeskClient() {
             ) : null}
             {seat.atmosphere ? <p className={styles.atmosphere}>{seat.atmosphere}</p> : null}
             <button type="button" disabled={seat.status === "full"} onClick={() => sit(seat)}>
-              {seat.status === "occupied" ? "相席する" : "座る"}
+              {seat.human_count > 0 ? "相席する" : "座る"}
             </button>
           </li>
         ))}

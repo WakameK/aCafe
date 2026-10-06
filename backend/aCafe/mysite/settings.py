@@ -122,7 +122,10 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [("redis", 6379)],
+            # redis-py 8系は socket_timeout の既定が5秒になった。channels_redis の待ち受け
+            # (bzpopmin, 5秒)と同じ長さなので、誰も発言しない間にタイムアウトして接続が切れる。
+            # 待ち受けより十分長く取る。
+            "hosts": [{"host": "redis", "port": 6379, "socket_timeout": 30}],
         },
     },
 }
