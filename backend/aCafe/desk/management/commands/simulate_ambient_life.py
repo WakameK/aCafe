@@ -29,7 +29,8 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         channel_layer = get_channel_layer()
-        empty_rooms = Room.objects.filter(human_count=0).prefetch_related("active_characters")
+        # 座席の部屋は対象外(一人で座った人のところに、しばらくしてからAIが入ってくる体験を壊さないため)
+        empty_rooms = Room.objects.filter(human_count=0, seat__isnull=True).prefetch_related("active_characters")
 
         for room in empty_rooms:
             active = list(room.active_characters.all())

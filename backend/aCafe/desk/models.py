@@ -60,6 +60,33 @@ class Message(models.Model):
 
 
 # ====================================
+# 座席
+# ====================================
+
+class Seat(models.Model):
+    """
+    カフェの座席。人が座った時点で、その席に紐づくチャット空間(Room)が作られる。
+
+    - 席に最初の1人が座る → 新しいRoomを作って room に紐づける
+    - 2人目以降は、capacity の範囲内で同じRoomに相席する
+    - 全員が離れて(human_count == 0)猶予時間が過ぎた席は「空席」。次に座る人には新しいRoomを作る
+    """
+    label = models.CharField(max_length=50, unique=True)   # 例: "カウンター1"
+    capacity = models.PositiveSmallIntegerField(default=4)  # 同時に座れる人数
+    room = models.OneToOneField(
+        Room, null=True, blank=True, on_delete=models.SET_NULL, related_name="seat"
+    )
+    # 最後に誰かが座った時刻。座ってからWebSocketが繋がるまでの間に席が「空き」に見えないための予約として使う
+    sat_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["id"]
+
+    def __str__(self):
+        return self.label
+
+
+# ====================================
 # 飲み物・食べ物メタファーAPI(奢る/奢られる)
 # ====================================
 

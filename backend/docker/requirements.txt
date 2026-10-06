@@ -5,3 +5,4 @@ channels-redis
 redis
 requests
 asgiref
+django-cors-headers

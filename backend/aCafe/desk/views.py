@@ -8,7 +8,8 @@ from django.views.decorators.http import require_http_methods
 
 from sosuke.models import Users
 from . import ai_manager
-from .models import DrinkGift, Message, Room
+from .models import DrinkGift, Message, Room, Seat
+from .seats import SeatFullError, get_or_create_guest, seat_to_dict, sit
 
 
 def _room_to_dict(room):
@@ -101,3 +102,46 @@ def send_gift(request, room_id):
         {"type": "chat.gift", "gift": gift_data},
     )
     return JsonResponse(gift_data, status=201)
+
+
+# ====================================
+# 座席
+# ====================================
+
+@require_http_methods(["GET"])
+def seats(request):
+    """座席の空き状況。誰かいるか・どんな雰囲気かを、座る前に確認できる。"""
+    all_seats = Seat.objects.select_related("room").prefetch_related("room__active_characters")
+    return JsonResponse({"seats": [seat_to_dict(s) for s in all_seats]})
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def sit_seat(request, seat_id):
+    """席に座る。空席なら新しいチャット空間が作られ、先客がいれば相席になる。"""
+    try:
+        body = json.loads(request.body or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "invalid json"}, status=400)
+    anon_id = body.get("anon_id")
+    if not anon_id:
+        return JsonResponse({"error": "anon_id is required"}, status=400)
+
+    try:
+        room = sit(seat_id)
+    except Seat.DoesNotExist:
+        return JsonResponse({"error": "seat not found"}, status=404)
+    except SeatFullError:
+        return JsonResponse({"error": "seat is full"}, status=409)
+
+    user = get_or_create_guest(anon_id)
+    seat = Seat.objects.select_related("room").get(pk=seat_id)
+    return JsonResponse(
+        {
+            "seat": seat_to_dict(seat, with_atmosphere=False),
+            "room_id": room.id,
+            "ws_path": f"/ws/rooms/{room.id}/?anon_id={anon_id}",
+            "user": {"id": user.user_id, "name": user.name},
+        },
+        status=201,
+    )
