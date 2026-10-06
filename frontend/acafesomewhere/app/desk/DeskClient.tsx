@@ -6,24 +6,25 @@ import styles from "./page.module.css";
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
 const WS_BASE = API_BASE.replace(/^http/, "ws");
 const ANON_ID_KEY = "acafe_anon_id";
-const SEAT_POLL_MS = 10_000;
-const PING_MS = 15_000; // サーバーに在席を知らせる間隔(止まると一定時間後に席から外れる)
-const CLOSE_SEAT_FULL = 4403;
+const TABLE_POLL_MS = 10_000;
+const PING_MS = 15_000; // サーバーに在席を知らせる間隔(止まると一定時間後にテーブルから外れる)
 
-type SeatStatus = "vacant" | "occupied" | "full";
+type TableStatus = "vacant" | "occupied";
 
-type Seat = {
+const TABLE_NAME_MAX = 30;
+
+type Table = {
   id: number;
-  label: string;
-  capacity: number;
-  status: SeatStatus;
+  name: string;
+  is_permanent: boolean;
+  status: TableStatus;
   human_count: number;
   characters: string[];
   atmosphere: string;
 };
 
 type SitResponse = {
-  seat: Seat;
+  table: Table;
   room_id: number;
   ws_path: string;
   user: { id: number; name: string };
@@ -41,10 +42,9 @@ type ServerEvent =
   | { type: "chat.atmosphere"; summary: string }
   | { type: "chat.gift" };
 
-const STATUS_LABEL: Record<SeatStatus, string> = {
-  vacant: "空席",
+const STATUS_LABEL: Record<TableStatus, string> = {
+  vacant: "誰もいません",
   occupied: "誰かいます",
-  full: "満席",
 };
 
 function getAnonId(): string {
@@ -60,13 +60,15 @@ function getAnonId(): string {
 }
 
 function presenceText(event: "join" | "leave" | "ai_join", user: string): string {
-  if (event === "leave") return `${user} が席を立ちました`;
-  return `${user} が席につきました`;
+  if (event === "leave") return `${user} がテーブルを離れました`;
+  return `${user} がテーブルにつきました`;
 }
 
 export default function DeskClient() {
-  const [seats, setSeats] = useState<Seat[]>([]);
-  const [seatError, setSeatError] = useState<string | null>(null);
+  const [tables, setTables] = useState<Table[]>([]);
+  const [floorCount, setFloorCount] = useState(0);
+  const [newTopic, setNewTopic] = useState("");
+  const [tableError, setTableError] = useState<string | null>(null);
   const [sitting, setSitting] = useState<SitResponse | null>(null);
   const [lines, setLines] = useState<ChatLine[]>([]);
   const [atmosphere, setAtmosphere] = useState("");
@@ -77,28 +79,29 @@ export default function DeskClient() {
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const lineSeq = useRef(0);
 
-  const loadSeats = useCallback(async () => {
+  const loadTables = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/desk/seats/`);
+      const res = await fetch(`${API_BASE}/api/desk/tables/`);
       if (!res.ok) throw new Error(String(res.status));
-      const data: { seats: Seat[] } = await res.json();
-      setSeats(data.seats);
-      setSeatError(null);
+      const data: { tables: Table[]; floor: { human_count: number } } = await res.json();
+      setTables(data.tables);
+      setFloorCount(data.floor.human_count);
+      setTableError(null);
     } catch {
-      setSeatError("座席の様子を確認できませんでした。少し待ってからもう一度お試しください。");
+      setTableError("テーブルの様子を確認できませんでした。少し待ってからもう一度お試しください。");
     }
   }, []);
 
-  // 席に座っていない間だけ、座席の空き状況を定期的に確認する
+  // テーブルに座っていない間だけ、店内の様子を定期的に確認する
   useEffect(() => {
     if (sitting) return;
-    const first = setTimeout(loadSeats, 0);
-    const timer = setInterval(loadSeats, SEAT_POLL_MS);
+    const first = setTimeout(loadTables, 0);
+    const timer = setInterval(loadTables, TABLE_POLL_MS);
     return () => {
       clearTimeout(first);
       clearInterval(timer);
     };
-  }, [sitting, loadSeats]);
+  }, [sitting, loadTables]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -136,43 +139,57 @@ export default function DeskClient() {
         }
       };
 
-      socket.onclose = (ev) => {
+      socket.onclose = () => {
         clearInterval(pinger);
-        if (socketRef.current !== socket) return; // 自分で席を立った場合
+        if (socketRef.current !== socket) return; // 自分でテーブルを離れた場合
         socketRef.current = null;
         setSitting(null);
-        setNotice(
-          ev.code === CLOSE_SEAT_FULL
-            ? "その席は満席になってしまいました。"
-            : "接続が切れたので、席から離れました。",
-        );
+        setNotice("接続が切れたので、テーブルから離れました。");
       };
     },
     [pushLine],
   );
 
-  async function sit(seat: Seat) {
+  async function join(path: string, init: RequestInit) {
     setNotice(null);
     try {
-      const res = await fetch(`${API_BASE}/api/desk/seats/${seat.id}/sit/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ anon_id: getAnonId() }),
-      });
+      const res = await fetch(`${API_BASE}${path}`, init);
+      if (res.status === 404) {
+        setNotice("そのテーブルはもう片付けられてしまいました。");
+        await loadTables();
+        return;
+      }
       if (res.status === 409) {
-        setNotice("その席は満席です。");
-        await loadSeats();
+        setNotice("テーブルが多すぎて、新しく作れませんでした。");
         return;
       }
       if (!res.ok) throw new Error(String(res.status));
       const session: SitResponse = await res.json();
       setLines([]);
-      setAtmosphere(seat.atmosphere);
+      setAtmosphere(tables.find((t) => t.id === session.table.id)?.atmosphere ?? "");
       setSitting(session);
       connect(session);
     } catch {
-      setNotice("席に座れませんでした。もう一度お試しください。");
+      setNotice("テーブルにつけませんでした。もう一度お試しください。");
     }
+  }
+
+  const postInit = (body: object): RequestInit => ({
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ anon_id: getAnonId(), ...body }),
+  });
+
+  function sit(table: Table) {
+    return join(`/api/desk/tables/${table.id}/sit/`, postInit({}));
+  }
+
+  function createTable(e: React.FormEvent) {
+    e.preventDefault();
+    const name = newTopic.trim();
+    if (!name) return;
+    setNewTopic("");
+    return join("/api/desk/tables/", postInit({ name }));
   }
 
   function leave() {
@@ -196,11 +213,11 @@ export default function DeskClient() {
       <div className={styles.room}>
         <div className={styles.roomHeader}>
           <div>
-            <h3>{sitting.seat.label}</h3>
+            <h3>{sitting.table.name}</h3>
             {atmosphere ? <p className={styles.atmosphere}>{atmosphere}</p> : null}
           </div>
           <button type="button" className={styles.leaveButton} onClick={leave}>
-            席を立つ
+            テーブルを離れる
           </button>
         </div>
 
@@ -241,29 +258,47 @@ export default function DeskClient() {
   }
 
   return (
-    <div className={styles.seatList}>
+    <div className={styles.tableList}>
       {notice ? <p className={styles.alert}>{notice}</p> : null}
-      {seatError ? <p className={styles.alert}>{seatError}</p> : null}
-      <ul className={styles.seats}>
-        {seats.map((seat) => (
-          <li key={seat.id} className={`${styles.seat} ${styles[seat.status]}`}>
-            <div className={styles.seatHead}>
-              <strong>{seat.label}</strong>
-              <span className={styles.badge}>{STATUS_LABEL[seat.status]}</span>
+      {tableError ? <p className={styles.alert}>{tableError}</p> : null}
+
+      <p className={styles.floor}>店内に {floorCount} 人います。気になる話題のテーブルに座ってみてください。</p>
+
+      <ul className={styles.tables}>
+        {tables.map((table) => (
+          <li key={table.id} className={`${styles.table} ${styles[table.status]}`}>
+            <div className={styles.tableHead}>
+              <strong>{table.name}</strong>
+              <span className={styles.badge}>{STATUS_LABEL[table.status]}</span>
             </div>
-            {seat.human_count > 0 ? (
+            {table.human_count > 0 ? (
               <p className={styles.who}>
-                {seat.human_count}人 / {seat.capacity}人
-                {seat.characters.length > 0 ? `・${seat.characters.join("、")} が同席` : ""}
+                {table.human_count}人
+                {table.characters.length > 0 ? `・${table.characters.join("、")} が同席` : ""}
               </p>
             ) : null}
-            {seat.atmosphere ? <p className={styles.atmosphere}>{seat.atmosphere}</p> : null}
-            <button type="button" disabled={seat.status === "full"} onClick={() => sit(seat)}>
-              {seat.human_count > 0 ? "相席する" : "座る"}
+            {table.atmosphere ? <p className={styles.atmosphere}>{table.atmosphere}</p> : null}
+            <button type="button" onClick={() => sit(table)}>
+              {table.human_count > 0 ? "同じテーブルにつく" : "座る"}
             </button>
           </li>
         ))}
       </ul>
+
+      <form className={styles.newTable} onSubmit={createTable}>
+        <label htmlFor="new-table-topic">話したい話題で新しいテーブルを作る</label>
+        <div className={styles.newTableRow}>
+          <input
+            id="new-table-topic"
+            type="text"
+            value={newTopic}
+            onChange={(e) => setNewTopic(e.target.value)}
+            placeholder="例: 最近読んだ本"
+            maxLength={TABLE_NAME_MAX}
+          />
+          <button type="submit">作って座る</button>
+        </div>
+      </form>
     </div>
   );
 }

@@ -8,14 +8,17 @@ from django.views.decorators.http import require_http_methods
 
 from sosuke.models import Users
 from . import ai_manager
-from .models import DrinkGift, Message, Room, Seat
-from .seats import (
-    SeatFullError,
-    ensure_vacant_seats,
+from .models import DrinkGift, Message, Room, Table
+from .tables import (
+    TABLE_NAME_MAX,
+    InvalidTableName,
+    TableLimitError,
+    close_empty_tables,
+    create_table,
     get_or_create_guest,
     purge_stale_presences,
-    seat_to_dict,
     sit,
+    table_to_dict,
 )
 
 
@@ -112,45 +115,72 @@ def send_gift(request, room_id):
 
 
 # ====================================
-# 座席
+# テーブル
 # ====================================
 
-@require_http_methods(["GET"])
-def seats(request):
-    """座席の空き状況。誰かいるか・どんな雰囲気かを、座る前に確認できる。"""
-    purge_stale_presences()
-    ensure_vacant_seats()
-    all_seats = Seat.objects.select_related("room").prefetch_related("room__active_characters")
-    return JsonResponse({"seats": [seat_to_dict(s) for s in all_seats]})
+def _session_payload(table, room, user, anon_id):
+    return {
+        "table": table_to_dict(table, with_atmosphere=False),
+        "room_id": room.id,
+        "ws_path": f"/ws/rooms/{room.id}/?anon_id={anon_id}",
+        "user": {"id": user.user_id, "name": user.name},
+    }
+
+
+def _read_anon_id(request):
+    """リクエストのJSONからanon_idを取り出す。(body, anon_id, エラー応答) を返す。"""
+    try:
+        body = json.loads(request.body or "{}")
+    except json.JSONDecodeError:
+        return None, None, JsonResponse({"error": "invalid json"}, status=400)
+    anon_id = body.get("anon_id")
+    if not anon_id:
+        return None, None, JsonResponse({"error": "anon_id is required"}, status=400)
+    return body, anon_id, None
+
+
+@csrf_exempt
+@require_http_methods(["GET", "POST"])
+def tables(request):
+    """
+    GET: テーブル一覧。誰かいるか・どんな雰囲気かを、座る前に確認できる。
+    POST: 話題を付けてテーブルを作り、そのまま座る。
+    """
+    if request.method == "GET":
+        purge_stale_presences()
+        close_empty_tables()
+        all_tables = Table.objects.select_related("room").prefetch_related("room__active_characters")
+        data = [table_to_dict(t) for t in all_tables]
+        return JsonResponse(
+            {"tables": data, "floor": {"human_count": sum(t["human_count"] for t in data)}}
+        )
+
+    body, anon_id, error = _read_anon_id(request)
+    if error:
+        return error
+    try:
+        table = create_table(body.get("name"))
+    except InvalidTableName:
+        return JsonResponse({"error": f"name must be 1-{TABLE_NAME_MAX} characters"}, status=400)
+    except TableLimitError:
+        return JsonResponse({"error": "too many tables"}, status=409)
+
+    user = get_or_create_guest(anon_id)
+    return JsonResponse(_session_payload(table, table.room, user, anon_id), status=201)
 
 
 @csrf_exempt
 @require_http_methods(["POST"])
-def sit_seat(request, seat_id):
-    """席に座る。空席なら新しいチャット空間が作られ、先客がいれば相席になる。"""
+def sit_table(request, table_id):
+    """テーブルに座る。誰かいれば、そのテーブルの会話に合流する。"""
+    _, anon_id, error = _read_anon_id(request)
+    if error:
+        return error
     try:
-        body = json.loads(request.body or "{}")
-    except json.JSONDecodeError:
-        return JsonResponse({"error": "invalid json"}, status=400)
-    anon_id = body.get("anon_id")
-    if not anon_id:
-        return JsonResponse({"error": "anon_id is required"}, status=400)
-
-    try:
-        room = sit(seat_id)
-    except Seat.DoesNotExist:
-        return JsonResponse({"error": "seat not found"}, status=404)
-    except SeatFullError:
-        return JsonResponse({"error": "seat is full"}, status=409)
+        room = sit(table_id)
+    except Table.DoesNotExist:
+        return JsonResponse({"error": "table not found"}, status=404)
 
     user = get_or_create_guest(anon_id)
-    seat = Seat.objects.select_related("room").get(pk=seat_id)
-    return JsonResponse(
-        {
-            "seat": seat_to_dict(seat, with_atmosphere=False),
-            "room_id": room.id,
-            "ws_path": f"/ws/rooms/{room.id}/?anon_id={anon_id}",
-            "user": {"id": user.user_id, "name": user.name},
-        },
-        status=201,
-    )
+    table = Table.objects.select_related("room").get(pk=table_id)
+    return JsonResponse(_session_payload(table, room, user, anon_id), status=201)

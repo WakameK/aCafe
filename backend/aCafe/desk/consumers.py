@@ -9,7 +9,7 @@ from django.db import transaction
 
 from sosuke.models import Users
 from .models import Room, Message
-from . import ai_manager, seats
+from . import ai_manager, tables
 
 logger = logging.getLogger(__name__)
 
@@ -39,10 +39,7 @@ class RoomConsumer(AsyncJsonWebsocketConsumer):
 
         self.user = await self._get_or_create_user(self.anon_id)
 
-        # 席の定員を超えていたら入れない(座席に紐づくチャット空間のみ)
-        if not await self._try_enter(self.room_id):
-            await self.close(code=4403)
-            return
+        await self._enter(self.room_id)
         self.entered = True
 
         await self.channel_layer.group_add(self.group_name, self.channel_name)
@@ -61,7 +58,7 @@ class RoomConsumer(AsyncJsonWebsocketConsumer):
     async def disconnect(self, close_code):
         if getattr(self, "entered", False):
             await self.channel_layer.group_discard(self.group_name, self.channel_name)
-            await database_sync_to_async(seats.leave)(self.room_id, self.channel_name)
+            await database_sync_to_async(tables.leave)(self.room_id, self.channel_name)
             await self.channel_layer.group_send(
                 self.group_name,
                 {"type": "chat.presence", "event": "leave", "user": self.user.name},
@@ -72,7 +69,7 @@ class RoomConsumer(AsyncJsonWebsocketConsumer):
 
         if msg_type == "ping":
             # クライアントの生存確認。在席を更新する
-            await database_sync_to_async(seats.touch)(self.room_id, self.channel_name)
+            await database_sync_to_async(tables.touch)(self.room_id, self.channel_name)
             return
 
         if msg_type == "chat.message":
@@ -122,7 +119,7 @@ class RoomConsumer(AsyncJsonWebsocketConsumer):
         low, high = getattr(settings, "DESK_LONELY_JOIN_SECONDS", (30, 60))
         await asyncio.sleep(random.uniform(low, high))
 
-        # まだ一人きりのときだけ入ってくる(誰かと相席になっていたり、席を離れていたら何もしない)
+        # まだ一人きりのときだけ入ってくる(誰かが同じテーブルに来ていたり、席を離れていたら何もしない)
         if not await self._room_has_lone_human(room_id):
             await self._release_ai_join_flag(room_id)
             return
@@ -219,7 +216,7 @@ class RoomConsumer(AsyncJsonWebsocketConsumer):
     def _claim_ai_join_if_needed(self, room_id):
         with transaction.atomic():
             room = Room.objects.select_for_update().get(pk=room_id)
-            if seats.live_count(room) != 1 or room.ai_join_scheduled or room.active_characters.exists():
+            if tables.live_count(room) != 1 or room.ai_join_scheduled or room.active_characters.exists():
                 return False
             room.ai_join_scheduled = True
             room.save(update_fields=["ai_join_scheduled"])
@@ -230,14 +227,14 @@ class RoomConsumer(AsyncJsonWebsocketConsumer):
         Room.objects.filter(pk=room_id).update(ai_join_scheduled=False)
 
     @database_sync_to_async
-    def _try_enter(self, room_id):
-        """在席に加わる。座席に紐づく部屋で定員いっぱいなら False。"""
-        return seats.enter(room_id, self.channel_name)
+    def _enter(self, room_id):
+        """在席に加わる。"""
+        tables.enter(room_id, self.channel_name)
 
     @database_sync_to_async
     def _room_has_lone_human(self, room_id):
         room = Room.objects.filter(pk=room_id).first()
-        return bool(room and seats.live_count(room) == 1)
+        return bool(room and tables.live_count(room) == 1)
 
     @database_sync_to_async
     def _pick_and_attach_character(self, room):

@@ -73,30 +73,30 @@ class Presence(models.Model):
 
 
 # ====================================
-# 座席
+# テーブル
 # ====================================
 
-class Seat(models.Model):
+class Table(models.Model):
     """
-    カフェの座席。人が座った時点で、その席に紐づくチャット空間(Room)が作られる。
+    店内のテーブル。話題ごとに作られ、人数の上限は無い(テーブルを繋げた1つの大きな空間のイメージ)。
+    誰かが座っている間、そのテーブルに紐づくチャット空間(Room)に全員が合流する。
 
-    - 席に最初の1人が座る → 新しいRoomを作って room に紐づける
-    - 2人目以降は、capacity の範囲内で同じRoomに相席する
-    - 全員が離れた(在席が0人になった)席は「空席」。次に座る人には新しいRoomを作る
+    - 利用者が話題を付けて作ったテーブルは、全員が離れたら閉じる
+    - is_permanent のテーブルは常設。全員が離れても残り、次に座る人には新しいRoomを作る
     """
-    label = models.CharField(max_length=50, unique=True)   # 例: "カウンター1"
-    capacity = models.PositiveSmallIntegerField(default=4)  # 同時に座れる人数
+    name = models.CharField(max_length=30)   # テーブルの話題。例: "最近読んだ本"
+    is_permanent = models.BooleanField(default=False)
     room = models.OneToOneField(
-        Room, null=True, blank=True, on_delete=models.SET_NULL, related_name="seat"
+        Room, null=True, blank=True, on_delete=models.SET_NULL, related_name="table"
     )
-    # 最後に誰かが座った時刻。座ってからWebSocketが繋がるまでの間に席が「空き」に見えないための予約として使う
+    # 最後に誰かが座った時刻。座ってからWebSocketが繋がるまでの間にテーブルが「空き」に見えないための予約として使う
     sat_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["id"]
 
     def __str__(self):
-        return self.label
+        return self.name
 
 
 # ====================================
