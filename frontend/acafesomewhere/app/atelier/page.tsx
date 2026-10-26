@@ -14,7 +14,7 @@ export default function AtelierPage() {
       title="女性のアトリエ"
       description='「女性」が作ったモノが無造作に置かれている。'
     >
-      <p>『持って帰るもぶっ壊すもご自由にどうぞ！それもうアタシのじゃないから！』</p>
+      <p>『持って帰るもぶっ壊すもご自由にどうぞ！それもうウチのじゃないから！』</p>
       <div className={styles.actions}>
         <a href="#">持って帰る</a>
         <a href="#">ぶっ壊してみる</a>
