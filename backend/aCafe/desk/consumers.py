@@ -50,7 +50,12 @@ class RoomConsumer(AsyncJsonWebsocketConsumer):
 
         await self.channel_layer.group_send(
             self.group_name,
-            {"type": "chat.presence", "event": "join", "user": self.user.name},
+            {
+                "type": "chat.presence",
+                "event": "join",
+                "user": self.user.name,
+                "user_id": self.user.user_id,
+            },
         )
 
         # 一人で座っているのにAIキャラもいない場合、しばらくしてからAIキャラが入ってくる
@@ -58,15 +63,42 @@ class RoomConsumer(AsyncJsonWebsocketConsumer):
         if should_schedule:
             asyncio.ensure_future(self._delayed_ai_join(self.room_id))
 
+    async def __call__(self, scope, receive, send):
+        # 例外でconsumerが落ちたときも、終了時に必ず後始末する
+        try:
+            await super().__call__(scope, receive, send)
+        finally:
+            await self._leave()
+
     async def disconnect(self, close_code):
-        if getattr(self, "entered", False):
-            await self.channel_layer.group_discard(self.group_name, self.channel_name)
-            await self._decrement_human_count(self.room_id)
-            await database_sync_to_async(seats.release_room_if_empty)(self.room_id)
-            await self.channel_layer.group_send(
-                self.group_name,
-                {"type": "chat.presence", "event": "leave", "user": self.user.name},
-            )
+        await self._leave()
+
+    async def _leave(self):
+        if not getattr(self, "entered", False):
+            return
+        self.entered = False  # 二重に人数を減らさないため
+
+        # DBの人数を先に戻す。Redisが不調でも実数の抜け忘れだけは起きない
+        await self._decrement_human_count(self.room_id)
+        await database_sync_to_async(seats.release_room_if_empty)(self.room_id)
+
+        # Redisを使う後始末は失敗しても構わない(最大5秒で諦める)
+        try:
+            await asyncio.wait_for(self._leave_group(), timeout=5)
+        except Exception:
+            logger.warning("leave通知に失敗しました (room %s)", self.room_id, exc_info=True)
+
+    async def _leave_group(self):
+        await self.channel_layer.group_discard(self.group_name, self.channel_name)
+        await self.channel_layer.group_send(
+            self.group_name,
+            {
+                "type": "chat.presence",
+                "event": "leave",
+                "user": self.user.name,
+                "user_id": self.user.user_id,
+            },
+        )
 
     async def receive_json(self, content, **kwargs):
         msg_type = content.get("type", "chat.message")
@@ -103,7 +135,13 @@ class RoomConsumer(AsyncJsonWebsocketConsumer):
 
     async def chat_presence(self, event):
         await self.send_json(
-            {"type": "chat.presence", "event": event["event"], "user": event["user"]}
+            {
+                "type": "chat.presence",
+                "event": event["event"],
+                "user": event["user"],
+                # 受け取った側が「これは自分の入退室か」を判定できるようにする(AI入室はNone)
+                "user_id": event.get("user_id"),
+            }
         )
 
     async def chat_gift(self, event):

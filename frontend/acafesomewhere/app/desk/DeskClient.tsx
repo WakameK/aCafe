@@ -36,7 +36,7 @@ type NewChatLine = ChatLine extends infer L ? (L extends ChatLine ? Omit<L, "id"
 
 type ServerEvent =
   | { type: "chat.message"; sender_type: "human" | "ai"; sender_name: string; message: string; message_id?: number }
-  | { type: "chat.presence"; event: "join" | "leave" | "ai_join"; user: string }
+  | { type: "chat.presence"; event: "join" | "leave" | "ai_join"; user: string; user_id?: number | null }
   | { type: "chat.atmosphere"; summary: string }
   | { type: "chat.gift" };
 
@@ -111,9 +111,13 @@ export default function DeskClient() {
   }, []);
 
   const connect = useCallback(
-    (session: SitResponse) => {
+    function openSocket(session: SitResponse, attempt = 0) {
       const socket = new WebSocket(`${WS_BASE}${session.ws_path}`);
       socketRef.current = socket;
+
+      socket.onopen = () => {
+        attempt = 0;
+      };
 
       socket.onmessage = (ev: MessageEvent<string>) => {
         const data: ServerEvent = JSON.parse(ev.data);
@@ -125,6 +129,8 @@ export default function DeskClient() {
             text: data.message,
           });
         } else if (data.type === "chat.presence") {
+          // 自分自身の入室・退室は表示しない(接続し直すたびに出てしまうため)
+          if (data.user_id != null && data.user_id === session.user.id) return;
           pushLine({ kind: "notice", text: presenceText(data.event, data.user) });
         } else if (data.type === "chat.atmosphere") {
           setAtmosphere(data.summary);
@@ -133,6 +139,15 @@ export default function DeskClient() {
 
       socket.onclose = (ev) => {
         if (socketRef.current !== socket) return; // 自分で席を立った場合
+
+        // 満席以外の切断は、1s→2s→4sで3回まで再接続を試す
+        if (ev.code !== CLOSE_SEAT_FULL && attempt < 3) {
+          setTimeout(() => {
+            if (socketRef.current === socket) openSocket(session, attempt + 1);
+          }, 1000 * 2 ** attempt);
+          return;
+        }
+
         socketRef.current = null;
         setSitting(null);
         setNotice(
@@ -144,7 +159,9 @@ export default function DeskClient() {
     },
     [pushLine],
   );
-
+  
+  
+  
   async function sit(seat: Seat) {
     setNotice(null);
     try {
