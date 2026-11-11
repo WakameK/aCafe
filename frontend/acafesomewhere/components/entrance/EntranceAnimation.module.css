@@ -1,0 +1,150 @@
+/* 配置先: components/entrance/EntranceAnimation.module.css */
+
+/* 店内(CafeHome)の上に被さるオーバーレイ */
+.stage {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: #0b0806;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  opacity: 1;
+}
+
+/* 最後にオーバーレイごと消えて、下の店内が見える */
+.stageOut {
+  opacity: 0;
+  transition: opacity var(--out, 550ms) ease;
+  pointer-events: none;
+}
+
+/* 画像と同じ 3:2 の枠 → クリック範囲(%指定)がズレない */
+.viewport {
+  position: relative;
+  width: min(100vw, 150dvh);
+  aspect-ratio: 3 / 2;
+  overflow: hidden;
+}
+
+/* カメラ: 全コマまとめてドアの方へ寄っていく */
+.camera {
+  position: absolute;
+  inset: 0;
+  transform-origin: 68% 55%;
+  will-change: transform;
+}
+
+.push {
+  animation: push var(--push, 2350ms) cubic-bezier(0.25, 0.1, 0.5, 1) forwards;
+}
+
+@keyframes push {
+  from { transform: scale(1); }
+  to   { transform: scale(1.12); }
+}
+
+.frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* --- fade モード: 次のコマがふわっと重なる --- */
+.fade {
+  transition: opacity var(--change, 380ms) ease-in-out;
+}
+
+.shown  { opacity: 1; }
+.hidden { opacity: 0; }
+
+/* --- slide モード: 紙芝居の紙を引き抜く --- */
+.slide {
+  transition: transform var(--change, 380ms) cubic-bezier(0.6, 0, 0.4, 1);
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.6);
+}
+
+.slidOut {
+  transform: translateX(-110%) rotate(-1.5deg);
+}
+
+/* 店(窓・ドア・看板)のクリック範囲。00_corridor.jpg 基準 */
+.hotspot {
+  position: absolute;
+  z-index: 10;
+  left: 51%;
+  top: 30%;
+  width: 34%;
+  height: 55%;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 12px;
+}
+
+.hotspot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(ellipse at 45% 45%, rgba(255, 196, 110, 0.28), transparent 70%);
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+
+.hotspot:hover::after,
+.hotspot:focus-visible::after {
+  opacity: 1;
+}
+
+.hotspot:focus-visible {
+  outline: 2px solid rgba(255, 210, 150, 0.7);
+  outline-offset: 4px;
+}
+
+.hint {
+  position: absolute;
+  z-index: 10;
+  left: 50%;
+  bottom: 5%;
+  transform: translateX(-50%);
+  margin: 0;
+  color: #f3dcb5;
+  font-size: clamp(12px, 1.6vw, 18px);
+  letter-spacing: 0.15em;
+  text-shadow: 0 0 8px rgba(0, 0, 0, 0.9);
+  animation: blink 2.4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 0.35; }
+  50%      { opacity: 1; }
+}
+
+/* ドアから溢れる暖色の光 */
+.flash {
+  position: absolute;
+  z-index: 20;
+  inset: 0;
+  background: radial-gradient(circle at 68% 50%, #fff4dc 0%, #ffc777 55%, #b5651d 100%);
+  opacity: 0;
+  transition: opacity var(--flash, 350ms) ease-in;
+  pointer-events: none;
+}
+
+.flashOn {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .push,
+  .hint {
+    animation: none;
+  }
+}
