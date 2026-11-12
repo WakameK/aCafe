@@ -49,13 +49,13 @@ services:
 
   frontend:
     build:
-      context: ./frontend/acafesomewhere
+      context: ./frontend/Cafe
       dockerfile: ../dockerfile
     command: npm run dev                  # ← 追加(開発サーバーで起動)
     environment:                          # ← 追加
       - WATCHPACK_POLLING=true            #   Windows で変更が検知されないとき用
     volumes:                              # ← 追加
-      - ./frontend/acafesomewhere:/app
+      - ./frontend/Cafe:/app
       - /app/node_modules
       - /app/.next
     depends_on:

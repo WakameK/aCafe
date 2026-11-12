@@ -1,0 +1,40 @@
+.footer {
+  margin-top: 48px;
+  padding: 32px 24px;
+  background: #1e140e;
+  color: #cdb99c;
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.footer a {
+  color: #e8d6bc;
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 20px;
+  margin: 0 0 20px;
+  padding: 0;
+  list-style: none;
+}
+
+.links a {
+  text-decoration: none;
+}
+
+.links a:hover {
+  text-decoration: underline;
+}
+
+.note {
+  margin: 0 0 12px;
+  line-height: 1.7;
+}
+
+.copy {
+  margin: 0;
+  opacity: 0.6;
+}

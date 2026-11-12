@@ -48,7 +48,7 @@
 - `views.py` / `urls.py`: 座席API
 - `consumers.py`: WebSocket(定員検査、一人のときのキャラ入室、AI失敗時も接続を保つ)
 - `migrations/0005_seed_seats.py`: 初期座席(カウンター席×3、テーブル席×2、ソファ席)
-- フロント: `frontend/acafesomewhere/app/desk/`
+- フロント: `frontend/Cafe/app/desk/`
 
 ## 今後の課題
 
