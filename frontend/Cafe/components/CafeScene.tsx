@@ -66,8 +66,8 @@ export default function CafeScene() {
           width="100"
           height="100"
           fill="#0c0704"
-          fillOpacity="0.72"
           mask="url(#cafe-mask)"
+          className={styles.curtain}
         />
       </svg>
 
