@@ -1,18 +1,19 @@
 /* 配置先: components/cafe/CafeHome.module.css */
 
+/* ヘッダーとフッターの間を埋める箱 */
 .stage {
-  position: fixed;
-  inset: 0;
+  position: relative;
+  flex: 1;
+  min-height: 0;
   background: #0b0806;
-  display: grid;
-  place-items: center;
   overflow: hidden;
 }
 
+/* 画像と同じ 3:2 の枠。幅・高さは CafeHome.tsx で箱の大きさを測って決め、中央に置く */
 .viewport {
-  position: relative;
-  width: min(100vw, 150dvh);
-  aspect-ratio: 3 / 2;
+  position: absolute;
+  inset: 0;
+  margin: auto;
   overflow: hidden;
 }
 

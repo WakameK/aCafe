@@ -4,6 +4,7 @@
 // 店内のベース画面。各場所をクリックするとページへ遷移する
 // href と位置(%)は仮。cafe_base.jpg(誰もいない店内)基準
 
+import { useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import styles from "./CafeHome.module.css";
 
@@ -17,10 +18,36 @@ const SPOTS = [
   { label: "看板", href: "/about", left: 0, top: 54, width: 18, height: 40 },
 ];
 
+// 画像の縦横比(幅 / 高さ)
+const RATIO = 3 / 2;
+
 export default function CafeHome() {
+  const stageRef = useRef<HTMLDivElement>(null);
+  // 3:2 を保ったまま箱に収まる最大サイズ
+  const [size, setSize] = useState<{ width: number; height: number } | null>(null);
+
+  useLayoutEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    const fit = () => {
+      const { clientWidth: w, clientHeight: h } = stage;
+      const width = Math.min(w, h * RATIO);
+      setSize({ width, height: width / RATIO });
+    };
+
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(stage);
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <div className={styles.stage}>
-      <div className={styles.viewport}>
+    <div ref={stageRef} className={styles.stage}>
+      <div
+        className={styles.viewport}
+        style={size ? { width: size.width, height: size.height } : { visibility: "hidden" }}
+      >
         <img src={CAFE_IMAGE} alt="くまの隠れ家店内" className={styles.bg} draggable={false} />
 
         {SPOTS.map((s) => (

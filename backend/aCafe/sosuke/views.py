@@ -114,7 +114,7 @@ def chat(request):
     ChatLog.objects.create(user=user, role="user", message=message)
 
     try:
-        reply, provider = generate_sosuke_reply(history, message, crisis=crisis)
+        reply, provider, search_info = generate_sosuke_reply(history, message, crisis=crisis)
     except Exception:
         # AIが落ちていても、窓口の案内だけは必ず返す
         payload = {"error": "AIに接続できませんでした", "crisis": crisis}
@@ -125,6 +125,8 @@ def chat(request):
     ChatLog.objects.create(user=user, role="sosuke", message=reply)
 
     payload = {"reply": reply, "provider": provider, "crisis": crisis}
+    if search_info:
+        payload["search"] = search_info
     if crisis:
         payload.update({"crisis_message": CRISIS_MESSAGE, "resources": CRISIS_RESOURCES})
     return JsonResponse(payload)

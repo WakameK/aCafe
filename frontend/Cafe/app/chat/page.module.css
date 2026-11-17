@@ -69,6 +69,28 @@
   border-radius: 12px 12px 12px 0;
 }
 
+/* マスターが調べたときの出典(折りたたみ) */
+.sources {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: #6d4c41;
+}
+
+.sources summary {
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+.sources ul {
+  margin: 0.35rem 0 0;
+  padding-left: 1.1rem;
+}
+
+.sources a {
+  color: #5d4037;
+  word-break: break-all;
+}
+
 .chatInputArea {
   background: #f9f5ef;
   padding: 1rem;

@@ -26,6 +26,22 @@ services:
     networks:
       - acafe-net
 
+  # マスターAIの調べもの用の検索サーバー(Google・Bing・DuckDuckGo などをまとめて検索する)
+  # 設定は ./searxng/settings.yml。外に公開しないよう、ホスト側は 127.0.0.1 だけで待ち受ける。
+  searxng:
+    image: searxng/searxng:latest
+    container_name: searxng
+    restart: unless-stopped
+    environment:
+      - SEARXNG_BASE_URL=http://localhost:8080/
+      - SEARXNG_SECRET=${SEARXNG_SECRET:-change-me-kuma-search}
+    volumes:
+      - ./searxng:/etc/searxng
+    ports:
+      - "127.0.0.1:8080:8080"
+    networks:
+      - acafe-net
+
   backend:
     build:
       context: ./backend
@@ -42,6 +58,8 @@ services:
       redis:
         condition: service_healthy
       ollama:
+        condition: service_started
+      searxng:
         condition: service_started
     ports:
       - "8000:8000"

@@ -145,6 +145,16 @@ SOSUKE_AI_PROVIDER = os.environ.get("SOSUKE_AI_PROVIDER", "auto")
 SOSUKE_MODEL = os.environ.get("SOSUKE_MODEL", "")
 SOSUKE_TIMEOUT = int(os.environ.get("SOSUKE_TIMEOUT", "120"))
 
+# マスターの調べもの(sosuke/search.py)。docker-compose の searxng サービスを使う。
+# WEB_SEARCH_PROVIDER: searxng(デフォルト) / off(検索しない)
+WEB_SEARCH_PROVIDER = os.environ.get("WEB_SEARCH_PROVIDER", "searxng")
+SEARXNG_URL = os.environ.get("SEARXNG_URL", "http://searxng:8080")
+WEB_SEARCH_TIMEOUT = int(os.environ.get("WEB_SEARCH_TIMEOUT", "8"))
+WEB_SEARCH_MAX_RESULTS = int(os.environ.get("WEB_SEARCH_MAX_RESULTS", "3"))
+# 「調べる必要があるか」の判定に使うモデル。空なら返答と同じモデル。
+SEARCH_DECISION_MODEL = os.environ.get("SEARCH_DECISION_MODEL", "")
+SEARCH_DECISION_TIMEOUT = int(os.environ.get("SEARCH_DECISION_TIMEOUT", "30"))
+
 # ===============================================
 # CORS / CSRF (Next.jsフロントエンドとの通信用)
 # ===============================================

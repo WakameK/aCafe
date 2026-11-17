@@ -13,11 +13,23 @@ html {
 
 body {
   min-width: 320px;
+  min-height: 100dvh;
   margin: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-x: clip; /* 万一はみ出す要素があっても横スクロールさせない */
   color: var(--text);
   font-family: "Yu Gothic", "Hiragino Kaku Gothic ProN", sans-serif;
 }
 
 a {
   color: inherit;
+}
+
+/* ヘッダーとフッターの間。余った高さを埋めてフッターを画面下に押し下げる */
+.site-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }

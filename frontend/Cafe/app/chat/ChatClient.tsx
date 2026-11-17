@@ -6,7 +6,9 @@ import styles from "./page.module.css";
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
 const ANON_ID_KEY = "acafe_anon_id";
 
-type Message = { id: number; role: "user" | "bot"; content: string };
+type Source = { title: string; url: string };
+
+type Message = { id: number; role: "user" | "bot"; content: string; sources?: Source[] };
 
 type CrisisResource = {
   name: string;
@@ -22,7 +24,12 @@ type ChatResponse = {
   crisis?: boolean;
   crisis_message?: string;
   resources?: CrisisResource[];
+  // マスターが調べものをしたときだけ入る
+  search?: { query: string; sources: Source[] };
 };
+
+// サーバーから来た URL は http(s) のものだけリンクにする
+const isHttpUrl = (url: string) => /^https?:\/\//.test(url);
 
 function getAnonId(): string {
   try {
@@ -53,8 +60,8 @@ export default function ChatClient() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [messages, sending]);
 
-  const push = (role: Message["role"], content: string) =>
-    setMessages((prev) => [...prev, { id: seq.current++, role, content }]);
+  const push = (role: Message["role"], content: string, sources?: Source[]) =>
+    setMessages((prev) => [...prev, { id: seq.current++, role, content, sources }]);
 
   const send = async (e: FormEvent) => {
     e.preventDefault();
@@ -81,7 +88,7 @@ export default function ChatClient() {
         setError(data.error ?? "マスターに声が届かなかったみたいです。少ししてからもう一度どうぞ。");
         return;
       }
-      push("bot", data.reply);
+      push("bot", data.reply, data.search?.sources.filter((s) => isHttpUrl(s.url)));
     } catch {
       setError("サーバーにつながりませんでした。");
     } finally {
@@ -100,7 +107,23 @@ export default function ChatClient() {
         <div className={styles.chatBox} aria-live="polite">
           {messages.map((m) => (
             <div key={m.id} className={`${styles.chatMessage} ${m.role === "user" ? styles.user : styles.bot}`}>
-              <div className={m.role === "user" ? styles.userBubble : styles.botBubble}>{m.content}</div>
+              <div className={m.role === "user" ? styles.userBubble : styles.botBubble}>
+                {m.content}
+                {m.sources && m.sources.length > 0 && (
+                  <details className={styles.sources}>
+                    <summary>マスターが調べたもの</summary>
+                    <ul>
+                      {m.sources.map((s) => (
+                        <li key={s.url}>
+                          <a href={s.url} target="_blank" rel="noopener noreferrer">
+                            {s.title || s.url}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
+              </div>
             </div>
           ))}
           {sending && (

@@ -7,7 +7,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ja">
       <body>
         <SiteHeader />   {/* ← 追加 */}
-        {children}
+        <div className="site-content">{children}</div>
         <SiteFooter />   {/* ← 追加 */}
       </body>
     </html>

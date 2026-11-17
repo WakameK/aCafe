@@ -1,0 +1,26 @@
+# SearXNG の設定(マスターAIの調べもの用)
+# デフォルト設定を土台にして、必要なところだけ上書きする。
+use_default_settings: true
+
+general:
+  instance_name: "kuma-search"
+
+search:
+  safe_search: 1          # 0: なし / 1: 中 / 2: 厳しめ
+  default_lang: "ja"
+  autocomplete: ""
+  # backend から JSON で受け取るため json を有効にする(デフォルトは html のみ)
+  formats:
+    - html
+    - json
+
+server:
+  # 実際の値は docker-compose の SEARXNG_SECRET 環境変数で上書きされる
+  secret_key: "change-me"
+  # 内部用なのでボット対策(limiter)は使わない。外部に公開しないこと。
+  limiter: false
+  public_instance: false
+  image_proxy: false
+
+ui:
+  static_use_hash: true
