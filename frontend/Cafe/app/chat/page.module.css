@@ -94,3 +94,82 @@
   cursor: pointer;
   font-weight: 600;
 }
+
+.chatInputArea button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.typing {
+  color: #8d6e63;
+  font-style: italic;
+}
+
+.error {
+  margin: 0;
+  padding: 0.5rem 1rem;
+  background: #fbe9e7;
+  color: #8d3a2a;
+  border-left: 1px solid #ddd;
+  border-right: 1px solid #ddd;
+  font-size: 0.9rem;
+}
+
+/* 希死念慮がうかがえる発言のあと、チャット窓の下に出す相談窓口の案内 */
+.crisisPanel {
+  max-width: 900px;
+  margin: 1.25rem auto 0;
+  padding: 1.25rem 1.5rem;
+  background: #fffdf7;
+  border: 2px solid #c5a572;
+  border-radius: 8px;
+  color: #3e2723;
+}
+
+.crisisPanel h4 {
+  margin: 0 0 0.5rem;
+  font-size: 1.15rem;
+}
+
+.crisisLead {
+  margin: 0 0 1rem;
+  line-height: 1.7;
+}
+
+.crisisPanel ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+
+.crisisPanel li {
+  padding: 0.75rem 1rem;
+  background: #f5eedf;
+  border-radius: 6px;
+}
+
+.crisisName {
+  font-weight: 600;
+}
+
+.crisisName a {
+  color: #5d3a1a;
+}
+
+.crisisTel {
+  display: inline-block;
+  margin-top: 0.25rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #5d3a1a;
+  text-decoration: none;
+}
+
+.crisisDesc {
+  margin-top: 0.25rem;
+  font-size: 0.85rem;
+  color: #6d4c41;
+}

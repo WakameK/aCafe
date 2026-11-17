@@ -1,9 +1,16 @@
+import json
+
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from desk.ai_manager import OllamaClient
+from desk.seats import get_or_create_guest
+from .ai import generate_sosuke_reply
+from .crisis import CRISIS_MESSAGE, CRISIS_RESOURCES, detect_suicidal_ideation
 from .models import ChatLog, InformationSheet, Users
+
+MAX_MESSAGE_LENGTH = 2000
 
 SHEET_FIELDS = [
     "severity", "worries", "sleepStatus", "appetiteStatus", "functioning",
@@ -76,3 +83,48 @@ def generate_information_sheet(request, user_id):
         },
         status=201,
     )
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def chat(request):
+    """
+    マスター(聡介)との1対1チャット。
+    ユーザーの発言に希死念慮・自殺念慮がうかがえる場合は crisis=true と相談窓口の一覧を返し、
+    フロント側でチャット窓の下に表示する。判定はAIではなくキーワード照合で行う(crisis.py)。
+    """
+    try:
+        body = json.loads(request.body or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "invalid json"}, status=400)
+
+    anon_id = body.get("anon_id")
+    message = (body.get("message") or "").strip()
+    if not anon_id:
+        return JsonResponse({"error": "anon_id is required"}, status=400)
+    if not message:
+        return JsonResponse({"error": "message is required"}, status=400)
+    if len(message) > MAX_MESSAGE_LENGTH:
+        return JsonResponse({"error": "message is too long"}, status=400)
+
+    user = get_or_create_guest(anon_id)
+    crisis = detect_suicidal_ideation(message)
+
+    history = list(ChatLog.objects.filter(user=user).order_by("-created_at")[:12])[::-1]
+    ChatLog.objects.create(user=user, role="user", message=message)
+
+    try:
+        reply, provider = generate_sosuke_reply(history, message, crisis=crisis)
+    except Exception:
+        # AIが落ちていても、窓口の案内だけは必ず返す
+        payload = {"error": "AIに接続できませんでした", "crisis": crisis}
+        if crisis:
+            payload.update({"crisis_message": CRISIS_MESSAGE, "resources": CRISIS_RESOURCES})
+        return JsonResponse(payload, status=502)
+
+    ChatLog.objects.create(user=user, role="sosuke", message=reply)
+
+    payload = {"reply": reply, "provider": provider, "crisis": crisis}
+    if crisis:
+        payload.update({"crisis_message": CRISIS_MESSAGE, "resources": CRISIS_RESOURCES})
+    return JsonResponse(payload)

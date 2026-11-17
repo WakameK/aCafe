@@ -137,6 +137,13 @@ CHANNEL_LAYERS = {
 OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://ollama:11434")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama3")
 
+# マスター(聡介)との1対1チャット (sosuke/ai.py)
+# SOSUKE_AI_PROVIDER: auto(Ollamaを試してダメならダミー) / ollama / mock(ダミーのみ)
+SOSUKE_AI_PROVIDER = os.environ.get("SOSUKE_AI_PROVIDER", "auto")
+# 専用モデル名(例: kuma-counselor-v1)。空なら OLLAMA_MODEL に簡易の人格プロンプトを付けて使う。
+SOSUKE_MODEL = os.environ.get("SOSUKE_MODEL", "")
+SOSUKE_TIMEOUT = int(os.environ.get("SOSUKE_TIMEOUT", "120"))
+
 # ===============================================
 # CORS / CSRF (Next.jsフロントエンドとの通信用)
 # ===============================================
