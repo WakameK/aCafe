@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "sosuke",    # sosukeアプリをインストール
     "ayaka",     # ayakaアプリをインストール
     "desk",      # deskアプリをインストール
+    "space",     # spaceアプリをインストール
 ]
 
 
