@@ -13,4 +13,9 @@ export const navLinks: NavLink[] = [
   { href: "/hakoniwa", label: "箱庭", spot: { x: 8, y: 55, w: 18, h: 22 } },
   { href: "/takibi", label: "焚火", spot: { x: 72, y: 52, w: 18, h: 24 } },
   { href: "/about", label: "このお店について" },
+  { href: "/chat", label: "カフェのマスターと話す" },
+  { href: "/desk", label: "誰かと話す" },
+  { href: "/atelier", label: "女性のアトリエ" },
+  { href: "/profile", label: "あなたの事" },
+  { href: "/login", label: "合言葉(登録とログイン)" },
 ];
