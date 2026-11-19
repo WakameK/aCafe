@@ -66,6 +66,29 @@ services:
     networks:
       - acafe-net
 
+  # 焚火の世話係。火の見回り・止まった接続の掃除・AIキャラの出入りを、15秒おきにやる。
+  # backend と同じイメージ・同じDBを使う(これが止まっても、チャット自体は動く)
+  desk-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: acafe-desk-worker
+    entrypoint: []
+    command: python manage.py desk_worker
+    env_file:
+      - ./backend/.env
+    volumes:
+      - ./backend/aCafe:/app
+      - db-data:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - acafe-net
+
   frontend:
     build:
       context: ./frontend/Cafe
