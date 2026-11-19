@@ -81,6 +81,20 @@ def get_or_create_guest(anon_id):
     return user
 
 
+MAX_DISPLAY_NAME = 20
+
+
+def set_display_name(user, raw):
+    """プロフィールで決めた名前を反映する。空・長すぎる・制御文字は整えて、決められなければ変えない。"""
+    if not isinstance(raw, str):
+        return user
+    name = "".join(ch for ch in raw if ch.isprintable()).strip()[:MAX_DISPLAY_NAME]
+    if name and name != user.name:
+        user.name = name
+        user.save(update_fields=["name"])
+    return user
+
+
 # ====================================
 # 火
 # ====================================

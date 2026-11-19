@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { loadDisplayName } from "@/lib/displayName";
 import styles from "./page.module.css";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
@@ -204,7 +205,7 @@ export default function DeskClient() {
         const res = await fetch(`${API_BASE}/api/desk/fires/${target.id}/join/`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ anon_id: anonId }),
+          body: JSON.stringify({ anon_id: anonId, display_name: loadDisplayName() }),
         });
         if (!res.ok) {
           setJoinError(await readError(res, "入れませんでした。"));

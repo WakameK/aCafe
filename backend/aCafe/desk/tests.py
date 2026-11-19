@@ -407,6 +407,21 @@ class FireApiTests(TestCase):
         res = self.post(f"/api/desk/fires/{fire_id}/join/", {"anon_id": "bobbob0001"})
         self.assertEqual(res.json()["note_draft"], "")
 
+    def test_join_uses_the_profile_name(self):
+        fire_id = self.create().json()["id"]
+        url = f"/api/desk/fires/{fire_id}/join/"
+        res = self.post(url, {"anon_id": "alice0001", "display_name": "  くま\n"})
+        self.assertEqual(res.json()["user"]["name"], "くま")
+        self.alice.refresh_from_db()
+        self.assertEqual(self.alice.name, "くま")
+        # 空や長すぎる名前でも壊れない
+        res = self.post(url, {"anon_id": "alice0001", "display_name": "   "})
+        self.assertEqual(res.json()["user"]["name"], "くま")
+        res = self.post(url, {"anon_id": "alice0001", "display_name": "あ" * 50})
+        self.assertEqual(res.json()["user"]["name"], "あ" * 20)
+        res = self.post(url, {"anon_id": "alice0001", "display_name": 123})
+        self.assertEqual(res.json()["user"]["name"], "あ" * 20)
+
     def test_join_is_refused_when_the_circle_is_full(self):
         fire_id = self.create(capacity=2).json()["id"]
         room = Room.objects.get(pk=fire_id)

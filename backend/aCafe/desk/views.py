@@ -5,7 +5,7 @@
   POST   fires/                    焚火を起こす
   PATCH  fires/<id>/               持ち主が焚火を変える(名前・テーマ・輪の人数・外向けのひとこと)
   DELETE fires/<id>/               持ち主が火を消す(焚火も発言も消える)
-  POST   fires/<id>/join/          輪に入る準備(WebSocketの接続先と、いままでの発言を返す)
+  POST   fires/<id>/join/          輪に入る準備(WebSocketの接続先と、いままでの発言を返す。display_name で名前も更新)
   GET    fires/<id>/messages/      発言の続き(輪にいる人だけ。?before= / ?after=)
   POST   fires/<id>/gifts/         薪・コーヒーなどを置く
 
@@ -137,6 +137,7 @@ def join(request, fire_id):
     room = _get_fire(fire_id)
     if room is None:
         return _error("fire not found", 404)
+    services.set_display_name(user, body.get("display_name"))  # プロフィールで決めた名前
 
     count = services.human_count(room.id)
     already_here = services.active_presences(room.id).filter(user_id=user.pk).exists()
