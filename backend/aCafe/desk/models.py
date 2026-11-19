@@ -1,14 +1,25 @@
 # =======================================================================
-# desk'smodels.py
+# desk's models.py
+#
+# 設計メモ(詳しくは DESIGN.md):
+#   - 「机」= Room。席数の固定は無く、誰でも作れる。定員(capacity)は机ごとに作成者が決める。
+#   - 机の人数は保存しない。Presence(接続ごとの記録)から「いま生きている接続」を数える。
+#   - 発言(Message)は消さない。机が片付けられても履歴はDBに残る(is_archived で一覧から外すだけ)。
 # =======================================================================
 from django.db import models
+from django.utils import timezone
+
 from sosuke.models import Users, characters  # 既存の匿名ユーザーモデル / キャラクターモデル
 
-# ====================================
-# チャットルームとメッセージのモデル
-# ====================================
 
 class Room(models.Model):
+    KIND_AMBIENT = "ambient"  # 最初からAIたちがいる机(運営が用意する)
+    KIND_USER = "user"        # ユーザーが作る机
+    KIND_CHOICES = [
+        (KIND_AMBIENT, "ambient"),
+        (KIND_USER, "user"),
+    ]
+
     MODE_QUIET = "quiet"   # AIは近くにいるだけで、呼ばれるまで話しかけない
     MODE_TALK = "talk"     # AIキャラが積極的に会話に参加する
     MODE_CHOICES = [
@@ -17,26 +28,57 @@ class Room(models.Model):
     ]
 
     name = models.CharField(max_length=100)
-    topic = models.CharField(max_length=200, blank=True, default="")  # 部屋のテーマ(任意)
+    topic = models.CharField(max_length=200, blank=True, default="")  # 机のテーマ(作成者が書く・任意)
     mode = models.CharField(max_length=10, choices=MODE_CHOICES, default=MODE_TALK)
+    kind = models.CharField(max_length=10, choices=KIND_CHOICES, default=KIND_USER)
 
-    # オーナーAI(sosuke)が作る「この部屋はこんな空気です」の要約。定期的/入室時に再生成する。
-    atmosphere_summary = models.TextField(blank=True, default="")
+    # 机の持ち主(ユーザーが作った机のみ)。定員などを変えられるのは持ち主だけ
+    owner = models.ForeignKey(
+        Users, null=True, blank=True, on_delete=models.SET_NULL, related_name="owned_desks"
+    )
+    # 同時に座れる「人間」の数(AIキャラは数えない)。持ち主がいつでも変えられる
+    capacity = models.PositiveSmallIntegerField(default=6)
+
+    # 片付けられた机。一覧には出ないが、発言ログはDBに残る
+    is_archived = models.BooleanField(default=False, db_index=True)
+
+    # 要約(話題と空気感)を机の外から見えるようにするか。持ち主が選べる
+    show_atmosphere = models.BooleanField(default=True)
+    summary_topic = models.CharField(max_length=100, blank=True, default="")  # 例: 仕事の疲れについて
+    summary_mood = models.CharField(max_length=100, blank=True, default="")   # 例: 静かに寄り添う感じ
     atmosphere_updated_at = models.DateTimeField(null=True, blank=True)
 
-    # 現在この部屋にいるAIキャラ(複数可)
+    # 現在この机にいるAIキャラ(複数可)
     active_characters = models.ManyToManyField(characters, blank=True, related_name="rooms")
 
-    # 「誰もいない部屋にAIキャラを入れる」ロジックの二重起動防止フラグ
-    ai_join_scheduled = models.BooleanField(default=False)
+    # 「一人でいる人のところにAIが来る」予定時刻。None なら予定なし(workerが管理する)
+    ai_join_after = models.DateTimeField(null=True, blank=True)
+    # AIだけの机で、次にAIが動く(入室・雑談・退室する)時刻(workerが管理する)
+    ambient_next_at = models.DateTimeField(null=True, blank=True)
 
-    # 今この部屋に接続している人間の人数(WebSocket接続時/切断時にconsumerが増減させる)
-    human_count = models.PositiveIntegerField(default=0)
-
+    # 最後に人の出入りや発言があった時刻。誰もいないまま一定時間たった机を片付ける目安
+    last_active_at = models.DateTimeField(default=timezone.now, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.name
+
+
+class Presence(models.Model):
+    """
+    「いま、この机につながっている接続」の記録。1接続 = 1行。
+
+    人数カウンタを持つ代わりにこれを数える。サーバーが落ちた・回線が切れたなどで
+    切断処理が走らなくても、last_seen が更新されなくなるので一定時間後に自動で数えなくなる。
+    """
+    room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name="presences")
+    user = models.ForeignKey(Users, on_delete=models.CASCADE, related_name="desk_presences")
+    channel_name = models.CharField(max_length=255, unique=True)
+    joined_at = models.DateTimeField(auto_now_add=True)
+    last_seen = models.DateTimeField(default=timezone.now, db_index=True)
+
+    def __str__(self):
+        return f"{self.user_id}@{self.room_id}"
 
 
 class Message(models.Model):
@@ -56,44 +98,24 @@ class Message(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ["created_at"]
+        ordering = ["created_at", "id"]
+        indexes = [models.Index(fields=["room", "id"])]
 
 
 # ====================================
-# 座席
-# ====================================
-
-class Seat(models.Model):
-    """
-    カフェの座席。人が座った時点で、その席に紐づくチャット空間(Room)が作られる。
-
-    - 席に最初の1人が座る → 新しいRoomを作って room に紐づける
-    - 2人目以降は、capacity の範囲内で同じRoomに相席する
-    - 全員が離れて(human_count == 0)猶予時間が過ぎた席は「空席」。次に座る人には新しいRoomを作る
-    """
-    label = models.CharField(max_length=50, unique=True)   # 例: "カウンター1"
-    capacity = models.PositiveSmallIntegerField(default=4)  # 同時に座れる人数
-    room = models.OneToOneField(
-        Room, null=True, blank=True, on_delete=models.SET_NULL, related_name="seat"
-    )
-    # 最後に誰かが座った時刻。座ってからWebSocketが繋がるまでの間に席が「空き」に見えないための予約として使う
-    sat_at = models.DateTimeField(null=True, blank=True)
-
-    class Meta:
-        ordering = ["id"]
-
-    def __str__(self):
-        return self.label
-
-
-# ====================================
-# 飲み物・食べ物メタファーAPI(奢る/奢られる)
+# 飲み物・食べ物メタファー(コーヒーを置く)
 # ====================================
 
 class DrinkGift(models.Model):
     room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name="gifts")
-    from_user = models.ForeignKey(Users, related_name="gifts_sent", on_delete=models.CASCADE)
-    # to_userがNoneなら「部屋全体に奢る」を表す
+    # 人間が置いたなら from_user、AIキャラが置いたなら from_character(どちらか一方)
+    from_user = models.ForeignKey(
+        Users, related_name="gifts_sent", on_delete=models.CASCADE, null=True, blank=True
+    )
+    from_character = models.ForeignKey(
+        characters, related_name="gifts_sent", on_delete=models.CASCADE, null=True, blank=True
+    )
+    # to_userがNoneなら「机に置く(特定の誰かではない)」を表す
     to_user = models.ForeignKey(
         Users, related_name="gifts_received", on_delete=models.CASCADE, null=True, blank=True
     )
