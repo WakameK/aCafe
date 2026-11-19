@@ -1,10 +1,13 @@
 """
-AIキャラをチャットルームに参加させるためのロジック一式。
+AIキャラを焚火に参加させるためのロジック一式。
 
 - OllamaClient: /api/chat を叩く薄いラッパー
 - build_character_system_prompt: sosuke.characters の1レコードからシステムプロンプトを組み立てる
-- pick_characters_for_room: 部屋にまだいないキャラを何人か選ぶ
+- pick_characters_for_room: 焚火にまだいないキャラを何人か選ぶ
 - generate_character_reply: 直近の会話ログを踏まえてそのキャラの返信を生成する
+  (guidance を渡すと、「死にたい」気持ちを聴くときなど、その場に合わせた方針で返す)
+- suggest_softer_text: 強い言葉を、本人の気持ちを残したまま和らげた言い方にする(見張り用)
+- draft_public_note: 焚火の外に見せる「ひとこと」の下書きを作る(持ち主が承認するまで外には出ない)
 """
 import json
 import random
@@ -92,7 +95,7 @@ def build_character_system_prompt(character: Character) -> str:
             lines.append(f"[{label}] {value}")
 
     lines.append(
-        f"チャット空間「くまの隠れ家」に参加しています。他のキャラや人間の発言を踏まえて、"
+        f"焚火を囲む空間「くまの隠れ家」に参加しています。他のキャラや人間の発言を踏まえて、"
         f"「{character.name}」らしい口調・視点で短く自然に応答してください。"
         "1回の発言で全部言い切ろうとせず、会話のキャッチボールを大事にしてください。"
         "深刻な相談を受けたときは、畳みかけずに相手の言葉を待つ姿勢を優先してください。"
@@ -101,13 +104,13 @@ def build_character_system_prompt(character: Character) -> str:
 
 
 def pick_characters_for_room(room, exclude_ids=None, count=1):
-    """まだどの部屋にもいないキャラをランダムに数人選ぶ。
+    """まだどの焚火にもいないキャラをランダムに数人選ぶ。
     キャラクターたちには「自分の生活」があるという世界観にしたいので、
-    同時に複数の部屋へ同時出演することはしない(active_charactersはグローバルに排他)。
+    同時に複数の焚火へ同時出演することはしない(active_charactersはグローバルに排他)。
     聡介も含め、全キャラが雑談メンバーの候補になる
     (情報提供書を書く「専門家モード」は sosuke/views.py 側で別プロンプトとして完全に切り離してある)。"""
     exclude_ids = set(exclude_ids or [])
-    # このキャラが「今どこかの部屋に既にいる」なら除外する(自部屋・他部屋問わず)
+    # このキャラが「今どこかの焚火に既にいる」なら除外する(自分の焚火・他の焚火問わず)
     exclude_ids |= set(
         Character.objects.filter(rooms__isnull=False).values_list("character_id", flat=True)
     )
@@ -133,23 +136,35 @@ def format_recent_messages(messages, char_by_id=None, limit=20):
     return "\n".join(lines)
 
 
-def generate_character_reply(character: Character, recent_messages_text: str) -> str:
+# 同じ焚火の人が「死にたい」気持ちを話しているときに、キャラが従う方針。
+# ここを変えるときは、「その気持ちは正しい」「仕方ない」と言わせないこと(死ぬことへの許可に聞こえるため)。
+KEEPER_GUIDANCE = """いま、同じ焚火にいる人が「死にたい」という気持ちを話しています。次の方針で、2〜3文で短く返してください。
+- まず、その人の痛みを受け止める(「死にたいほどつらいんだね」のように)。ただし、その気持ちが「正しい」「仕方ない」とは言わない。
+- 説得、励まし、助言の羅列、「死んではいけない」という禁止はしない。
+- 責めずに、どんなことがあったのかを、話せる範囲で聞かせてほしいと、質問を1つだけする。
+- すでに理由を話してくれているなら、理由を受け止めたうえで、「それでも今日ここにいてくれる」ことに触れ、残っている気持ちを1つだけ尋ねる。
+- 自殺の方法や手段には一切触れない。
+- 「あなたはひとりじゃない。ここで一緒にいる」と、そばにいることを伝える。"""
+
+
+def generate_character_reply(character: Character, recent_messages_text: str, guidance=None, timeout=60) -> str:
     """直近の会話ログを踏まえて、そのキャラの1発言を生成する。"""
     client, system_prompt = get_client_and_system_prompt(character)
+    extra = f"\n\n{guidance}" if guidance else ""
     prompt = f"""これまでの会話:
 {recent_messages_text}
 
 上の流れを踏まえて、次のあなたの発言だけを短く生成してください。
-地の文や説明は付けず、実際に言う言葉だけを出力してください。"""
+地の文や説明は付けず、実際に言う言葉だけを出力してください。{extra}"""
     messages = []
     if system_prompt:
         messages.append({"role": "system", "content": system_prompt})
     messages.append({"role": "user", "content": prompt})
-    return client.chat(messages)
+    return client.chat(messages, timeout=timeout)
 
 
-def generate_ambient_exchange(character_a: Character, character_b: Character, room, turns: int = 2):
-    """人間が誰もいない部屋で、AI同士がなんでもない雑談をする(世界観演出用)。
+def generate_ambient_exchange(character_a: Character, character_b: Character, room, turns: int = 2, timeout=30):
+    """人間が誰もいない焚火で、AI同士がなんでもない雑談をする(世界観演出用)。
     往復`turns`回分のセリフをその場で生成して返す。実際の会話履歴には依存しない、
     ごく短い日常の一コマ、という位置づけ。"""
     history_text = f"(ここは「{room.name}」。今は{character_a.name}と{character_b.name}の2人だけがいる)"
@@ -166,25 +181,39 @@ def generate_ambient_exchange(character_a: Character, character_b: Character, ro
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})
-        line = client.chat(messages)
+        line = client.chat(messages, timeout=timeout)
         exchange.append((speaker, line))
         history_text += f"\n{speaker.name}: {line}"
     return exchange
 
 
-def generate_room_atmosphere_summary(room, recent_messages_text: str, timeout=60) -> str:
-    """オーナーAI視点で「この部屋はこんな空気です」を短く要約する。"""
-    client = OllamaClient()
-    prompt = f"""あなたは「くまの隠れ家」というチャット空間のオーナーです。
-チャットには参加せず、様子を見守るだけの存在です。
+def suggest_softer_text(text: str, timeout=20) -> str:
+    """強い言葉を、本人の気持ちを残したまま、人を傷つけにくい言い方にする(見張り用)。"""
+    prompt = f"""次の発言には、人を傷つけるかもしれない強い言葉が入っています。
+言いたい気持ち(怒り・悔しさ・つらさ)は消さずに、相手を攻撃しない言い方に直してください。
+- 1〜2文で、元の発言と同じくらいの長さにする
+- 説明や前置きは付けず、直した発言だけを出力する
 
-部屋名: {room.name}
-テーマ: {room.topic or "(未設定)"}
+発言: {text}"""
+    out = OllamaClient().chat([{"role": "user", "content": prompt}], temperature=0.4, timeout=timeout)
+    return (out or "").strip().strip("「」\"")[:300]
+
+
+def draft_public_note(recent_messages_text: str, timeout=30) -> str:
+    """
+    焚火の外に見せる「ひとこと」の下書きを作る。持ち主が承認するまで、外には出ない。
+    どんな悩みや話題の焚火なのかが伝わって、入りやすくなる文にする。
+    """
+    prompt = f"""あなたは焚火を見守る係です。チャットには参加しません。
 
 直近の会話:
 {recent_messages_text or "(まだ発言がありません)"}
 
-席を探している人が一目で「ここはこんな空気なんだ」と分かるように、
-1〜2文の軽い文章でこの席の雰囲気を伝えてください。会話の内容を暴露しすぎず、
-トーンや空気感を伝えることを優先してください。"""
-    return client.chat([{"role": "user", "content": prompt}], temperature=0.5, timeout=timeout)
+この焚火に入ろうか迷っている人が、「どんな話をしているところか」「自分が入っても大丈夫そうか」が
+分かるように、やわらかい1文(40字以内)で、いまの話題を伝えてください。
+- 人の名前、場所、勤務先・学校名など、個人が特定できることは書かない
+- 発言をそのまま引用しない
+- 自傷・死・暴力などの具体的な表現は書かず、「つらい気持ちを話しています」のように言い換える
+- 説明や前置きは付けず、その1文だけを出力する"""
+    out = OllamaClient().chat([{"role": "user", "content": prompt}], temperature=0.4, timeout=timeout)
+    return (out or "").strip().strip("「」\"")[:100]

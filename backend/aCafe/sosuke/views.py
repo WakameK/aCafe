@@ -5,7 +5,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from desk.ai_manager import OllamaClient
-from desk.seats import get_or_create_guest
+from desk.services import get_or_create_guest
 from .ai import generate_sosuke_reply
 from .crisis import CRISIS_MESSAGE, CRISIS_RESOURCES, detect_suicidal_ideation
 from .models import ChatLog, InformationSheet, Users
