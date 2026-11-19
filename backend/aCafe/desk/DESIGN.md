@@ -1,57 +1,61 @@
-# desk 設計: 座席とチャット空間
+# desk — 焚火の対話空間
 
-カフェの「座席」に座ると、その席のチャット空間(`Room`)ができる。人が一人で座っているとキャラクターAIが入ってくる。
+## 考え方
+- 辛いときに、焚火にあたりに行く。話した言葉が薪になって、火が続く。話が減ると火が小さくなり、消えたら**焚火ごと(発言も)消える**。「また会えたらいいね」。
+- 席数の固定はない。誰でも焚火を作れ(1人3つまで)、持ち主が定員(2〜12人)を決める。
+- AIだけの焚火(`ambient`)が2つあり、火は消えない。AIキャラが雑談している。
+- ひとりで火にあたっている人のところへ、30〜60秒後にAIキャラが来る(待った時間が長い順)。来るとまずコーヒーを置く。
 
-## 体験の流れ
-
-1. **座席を見る** `GET /api/desk/seats/`
-   - 席ごとに「空席 / 誰かいます / 満席」、人数、同席しているキャラ、雰囲気ひとことを返す。
-   - 雰囲気ひとこと = オーナーAI(`generate_room_atmosphere_summary`)が直近の会話から作る1〜2文。会話内容は伝えず、空気感だけ伝える。
-2. **座る** `POST /api/desk/seats/<id>/sit/` body: `{"anon_id": "..."}`
-   - 空席 → 新しい `Room` を作って席に紐づける(= チャット空間の作成)。
-   - 先客あり → 定員内なら同じ `Room` に相席。満席は 409。
-   - レスポンスの `ws_path` に WebSocket で接続する(`/ws/rooms/<room_id>/?anon_id=...`)。
-3. **話す** WebSocket 上で `chat.message` を送受信。キャラが参加していれば返事をする(既存の `RoomConsumer`)。
-4. **席を立つ** WebSocket を閉じる。最後の1人が離れたらキャラは席から解放される。
-
-## しばらく一人でいるとキャラが入ってくる
-
-- 接続時に人間が自分1人だけ、かつキャラがいなければ、30〜60秒(`DESK_LONELY_JOIN_SECONDS`)後に入室をスケジュールする。
-- 待ち時間が過ぎた時点でまだ一人きりのときだけ、`pick_characters_for_room` で選んだキャラ1人が入室し、あいさつを1発言する。
-  誰かと相席になっていたり、席を離れていたら何もしない。
-- キャラは同時に複数の席/部屋にいない(既存の排他ルール)。
-- `simulate_ambient_life`(無人部屋のキャラ補充・雑談)は座席の部屋を対象にしない。座った人が最初からキャラのいる席に着いてしまうと、この演出が成り立たないため。
-
-## 席の状態
-
-`Seat.room` が席に紐づく現在のチャット空間。`Room.human_count`(WebSocket接続数)と `Seat.sat_at` から状態を決める。
-
-| 状態 | 条件 |
+## モデル(models.py)
+| モデル | 役割 |
 |---|---|
-| vacant(空席) | room が無い / 人が0人で、最後に座ってから猶予(`DESK_SIT_GRACE_SECONDS`, 既定30秒)を過ぎた |
-| occupied | 1人以上いる、または座った直後で猶予内(sit〜WebSocket接続の隙間に席が空きに見えないようにする) |
-| full | `human_count >= capacity` |
+| Room | 焚火。kind = ambient / user / legacy(旧席の名残。見えず、触れず) |
+| Presence | 輪にいる接続。`last_seen` が60秒止まったら、いない扱い |
+| Message | 発言(人・AI)。焚火が消えると一緒に消える |
+| DrinkGift | 贈り物(薪・コーヒー・お茶・毛布) |
 
-空席に座ると新しい `Room` に差し替え、古い部屋のキャラを解放する(古い部屋と発言ログはDBに残る)。
-定員は WebSocket 接続時にも検査する(超過は close code `4403`)。
+## 火
+- `fire_level`(0〜1)は時間で減る(既定 毎分0.02)。発言+0.08、贈り物+0.15、入室+0.05。
+- 0.2を下回ると「そろそろ終いにしようか」を一度だけ。0.005以下で焚火ごと削除(保存方針A:すぐ消す)。
+- ambient は下限0.5で消えない(発言は最新50件だけ残す)。
 
-## 雰囲気ひとことの生成ルール
+## 人数
+カウンターではなく Presence から数える(同じ人の複数タブは1人)。ハートビート20秒、TTL60秒。
+consumer が例外で落ちても `__call__` の finally で外れ、worker も止まった接続を掃除する。
+→「誰もいないのに1人いる」が起きない。
 
-- 発言がまだ無い席: 固定文「座ったばかりで、まだ静かな席です。」(AIを呼ばない)。
-- 前回の生成後に新しい発言があり、かつ最短間隔(`DESK_ATMOSPHERE_MIN_SECONDS`, 既定60秒)が過ぎていれば作り直す。
-- Ollama が落ちていても席一覧は返す(タイムアウト `DESK_ATMOSPHERE_TIMEOUT` 既定8秒、失敗時は古い文を使い、更新時刻は進めて連続待ちを避ける)。
+## 見張り(safety.py。ルールベース。完全ではない)
+| 種類 | 扱い |
+|---|---|
+| attack(他者への攻撃語) | 本人にだけ保留。やわらげ案 / こっそり燃やす / 書き直す。元の言葉は保存せず、他の人にも見せない |
+| method(方法) | 公開しない。本人にだけ寄り添いと相談窓口 |
+| ideation / imminent(死にたい) | 消さずに公開。本人にだけ静かな案内、周りには聴き方の案内(30分に1回)、AIキャラは「聴く」方針で返す。誰もいなければ1人呼ぶ |
 
-## ファイル
+死にたい気持ちへの返答は KEEPER_GUIDANCE に従い、「その気持ちは正しい」「仕方ない」とは言わない。
+相談窓口の番号は `DESK_CRISIS_LINES` で差し替えられる。**公開前に最新の番号を確認すること。**
 
-- `models.py`: `Seat`(座席)、`Room`、`Message`
-- `seats.py`: 座る・席の状態・雰囲気ひとこと・席の解放
-- `views.py` / `urls.py`: 座席API
-- `consumers.py`: WebSocket(定員検査、一人のときのキャラ入室、AI失敗時も接続を保つ)
-- `migrations/0005_seed_seats.py`: 初期座席(カウンター席×3、テーブル席×2、ソファ席)
-- フロント: `frontend/acafesomewhere/app/desk/`
+## 外向けのひとこと
+worker が下書きを作るのは持ち主にだけ(`note.draft`)。持ち主が承認した `public_note` だけが一覧に出る。
 
-## 今後の課題
+## API
+- `GET/POST /api/desk/fires/`(一覧は「ひとりで待っている」→2人以上→空→満員の順)
+- `PATCH/DELETE /api/desk/fires/<id>/`(持ち主のみ)
+- `POST .../join/` → fire, user, ws_path, history, gift_items(満員は409)
+- `GET .../messages/?before=|after=&limit=`(輪にいる人のみ)
+- `POST .../gifts/`(輪にいる人のみ。連続は429)
 
-- `anon_id` は自己申告のまま(なりすまし対策は未対応)。
-- `human_count` は接続数なので、同じ人が複数タブで開くと複数人として数える。
-- 席の一覧はポーリング(10秒)。席の変化をプッシュしたければ専用グループを追加する。
+## WebSocket `/ws/fires/<id>/?anon_id=...`
+close code(自動で再接続しない): 4401 anon_id不正 / 4403 満員 / 4404 無い / 4410 火が消えた。
+送信: `chat.message` `{message}` / `chat.resolve_hold` `{hold_id, choice}`
+受信: `chat.message` `chat.presence` `chat.gift` `fire.level` `fire.closing` `fire.out` `fire.updated`
+`chat.hold` `chat.burned`(本人のみ)/ `chat.care`(本人のみ)/ `chat.guide`(本人以外)/ `note.draft`(持ち主のみ)
+
+## 設定(settings.py に書けば上書き)
+`DESK_FIRE_DECAY_PER_MIN` `DESK_FIRE_CLOSING_LEVEL` `DESK_MAX_CAPACITY` `DESK_MAX_FIRES_PER_USER`
+`DESK_LONELY_JOIN_SECONDS` `DESK_MAX_JOINS_PER_TICK` `DESK_AMBIENT_CHARACTERS` `DESK_AMBIENT_INTERVAL_SECONDS`
+`DESK_MIN_SEND_INTERVAL` `DESK_HEARTBEAT_SECONDS` `DESK_CRISIS_LINES`
+
+## 既知の限界
+- 見張りはルールベース。言い換えは通る。
+- SQLite を backend と worker が共有する(ロックが出るなら PostgreSQL へ)。
+- 旧ルーム(legacy)はDBに残る。不要なら手動で消す。

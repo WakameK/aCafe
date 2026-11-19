@@ -1,10 +1,10 @@
 # =======================================================================
-# desk's models.py
+# desk's models.py  (画面では「焚火」と呼ぶ。コード上の名前は Room のまま)
 #
 # 設計メモ(詳しくは DESIGN.md):
-#   - 「机」= Room。席数の固定は無く、誰でも作れる。定員(capacity)は机ごとに作成者が決める。
-#   - 机の人数は保存しない。Presence(接続ごとの記録)から「いま生きている接続」を数える。
-#   - 発言(Message)は消さない。机が片付けられても履歴はDBに残る(is_archived で一覧から外すだけ)。
+#   - 焚火(Room)は誰でも起こせる。輪に入れる人数(capacity)は起こした人が決める。
+#   - 火は発言や薪で大きくなり、時間とともに小さくなる。消えたら焚火ごと(発言も)消える。
+#   - 人数は保存しない。Presence(接続ごとの記録)から「いま生きている接続」を数える。
 # =======================================================================
 from django.db import models
 from django.utils import timezone
@@ -13,11 +13,13 @@ from sosuke.models import Users, characters  # 既存の匿名ユーザーモデ
 
 
 class Room(models.Model):
-    KIND_AMBIENT = "ambient"  # 最初からAIたちがいる机(運営が用意する)
-    KIND_USER = "user"        # ユーザーが作る机
+    KIND_AMBIENT = "ambient"  # 最初からAIたちがいる焚火(運営が用意する。消えない)
+    KIND_USER = "user"        # ユーザーが起こす焚火(火が消えたら、焚火ごと消える)
+    KIND_LEGACY = "legacy"    # 席数が固定だった頃の部屋(一覧に出さない。発言ログだけ残っている)
     KIND_CHOICES = [
         (KIND_AMBIENT, "ambient"),
         (KIND_USER, "user"),
+        (KIND_LEGACY, "legacy"),
     ]
 
     MODE_QUIET = "quiet"   # AIは近くにいるだけで、呼ばれるまで話しかけない
@@ -28,35 +30,42 @@ class Room(models.Model):
     ]
 
     name = models.CharField(max_length=100)
-    topic = models.CharField(max_length=200, blank=True, default="")  # 机のテーマ(作成者が書く・任意)
+    topic = models.CharField(max_length=200, blank=True, default="")  # 起こした人が書くテーマ(任意)
     mode = models.CharField(max_length=10, choices=MODE_CHOICES, default=MODE_TALK)
-    kind = models.CharField(max_length=10, choices=KIND_CHOICES, default=KIND_USER)
+    kind = models.CharField(max_length=10, choices=KIND_CHOICES, default=KIND_USER, db_index=True)
 
-    # 机の持ち主(ユーザーが作った机のみ)。定員などを変えられるのは持ち主だけ
+    # 焚火を起こした人(ユーザーが起こした焚火のみ)。定員などを変えられるのは持ち主だけ
     owner = models.ForeignKey(
         Users, null=True, blank=True, on_delete=models.SET_NULL, related_name="owned_desks"
     )
-    # 同時に座れる「人間」の数(AIキャラは数えない)。持ち主がいつでも変えられる
+    # 輪に入れる「人間」の数(AIキャラは数えない)。持ち主がいつでも変えられる
     capacity = models.PositiveSmallIntegerField(default=6)
 
-    # 片付けられた机。一覧には出ないが、発言ログはDBに残る
-    is_archived = models.BooleanField(default=False, db_index=True)
+    # --- 火 ---
+    # fire_level は fire_updated_at の時点の値(0〜1)。いまの火の大きさは時間の経過分を引いて求める
+    fire_level = models.FloatField(default=0.6)
+    fire_updated_at = models.DateTimeField(default=timezone.now)
+    # 「そろそろ終いにしようか」を言ったか(火が回復したら False に戻す)
+    closing_announced = models.BooleanField(default=False)
 
-    # 要約(話題と空気感)を机の外から見えるようにするか。持ち主が選べる
-    show_atmosphere = models.BooleanField(default=True)
-    summary_topic = models.CharField(max_length=100, blank=True, default="")  # 例: 仕事の疲れについて
-    summary_mood = models.CharField(max_length=100, blank=True, default="")   # 例: 静かに寄り添う感じ
-    atmosphere_updated_at = models.DateTimeField(null=True, blank=True)
+    # --- 外から見える「ひとこと」 ---
+    # 持ち主が承認した文だけが、焚火の外(一覧)に出る。空なら外には何も出さない
+    public_note = models.CharField(max_length=120, blank=True, default="")
+    # AIが書いた下書き。持ち主にだけ見せて、承認されたら public_note になる
+    note_draft = models.CharField(max_length=200, blank=True, default="")
+    note_draft_at = models.DateTimeField(null=True, blank=True)
 
-    # 現在この机にいるAIキャラ(複数可)
+    # 輪の様子(workerが発言の数から計算する): waiting=新しい人を待っていそう / insiders=内輪で盛り上がっている / quiet=静か
+    welcome = models.CharField(max_length=12, blank=True, default="")
+
+    # 現在この焚火にいるAIキャラ(複数可)
     active_characters = models.ManyToManyField(characters, blank=True, related_name="rooms")
 
     # 「一人でいる人のところにAIが来る」予定時刻。None なら予定なし(workerが管理する)
     ai_join_after = models.DateTimeField(null=True, blank=True)
-    # AIだけの机で、次にAIが動く(入室・雑談・退室する)時刻(workerが管理する)
+    # AIだけの焚火で、次にAIが動く(入室・雑談・退室する)時刻(workerが管理する)
     ambient_next_at = models.DateTimeField(null=True, blank=True)
 
-    # 最後に人の出入りや発言があった時刻。誰もいないまま一定時間たった机を片付ける目安
     last_active_at = models.DateTimeField(default=timezone.now, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -66,7 +75,7 @@ class Room(models.Model):
 
 class Presence(models.Model):
     """
-    「いま、この机につながっている接続」の記録。1接続 = 1行。
+    「いま、この焚火につながっている接続」の記録。1接続 = 1行。
 
     人数カウンタを持つ代わりにこれを数える。サーバーが落ちた・回線が切れたなどで
     切断処理が走らなくても、last_seen が更新されなくなるので一定時間後に自動で数えなくなる。
@@ -102,11 +111,8 @@ class Message(models.Model):
         indexes = [models.Index(fields=["room", "id"])]
 
 
-# ====================================
-# 飲み物・食べ物メタファー(コーヒーを置く)
-# ====================================
-
 class DrinkGift(models.Model):
+    """焚火に置かれたもの(薪・コーヒーなど)。置くと火が少し大きくなる。"""
     room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name="gifts")
     # 人間が置いたなら from_user、AIキャラが置いたなら from_character(どちらか一方)
     from_user = models.ForeignKey(
@@ -115,11 +121,10 @@ class DrinkGift(models.Model):
     from_character = models.ForeignKey(
         characters, related_name="gifts_sent", on_delete=models.CASCADE, null=True, blank=True
     )
-    # to_userがNoneなら「机に置く(特定の誰かではない)」を表す
     to_user = models.ForeignKey(
         Users, related_name="gifts_received", on_delete=models.CASCADE, null=True, blank=True
     )
-    item_name = models.CharField(max_length=50, default="コーヒー")
+    item_name = models.CharField(max_length=50, default="薪")
     message = models.CharField(max_length=200, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
 
