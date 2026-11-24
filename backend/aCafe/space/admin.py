@@ -5,5 +5,5 @@ from .models import SpaceRoom
 
 @admin.register(SpaceRoom)
 class SpaceRoomAdmin(admin.ModelAdmin):
-    list_display = ("name", "slug", "created_at")
-    search_fields = ("name", "slug")
+    list_display = ("name", "slug", "heat", "is_permanent", "created_at")
+    list_editable = ("is_permanent",)
