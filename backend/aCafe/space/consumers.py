@@ -1,12 +1,14 @@
 import random
 import uuid
 
+from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 
-MAX_PLAYERS = 4
+from .models import SpaceRoom
 
-# 部屋ごとのプレイヤー状態 { room_name: { player_id: state } }
+# 部屋ごとのプレイヤー状態 { room_slug: { player_id: state } }
 # ※ プロセス内メモリなので、ASGIサーバー1プロセス運用が前提(MVP用)
+#    views.py からも人数表示のために参照する
 ROOMS: dict[str, dict[str, dict]] = {}
 
 
@@ -19,11 +21,13 @@ class SpaceConsumer(AsyncJsonWebsocketConsumer):
 
         await self.accept()
 
-        room = ROOMS.setdefault(self.room_name, {})
-        if len(room) >= MAX_PLAYERS:
-            await self.send_json({"type": "room_full"})
+        # DBに登録されていない部屋には入れない
+        if not await self._room_exists():
+            await self.send_json({"type": "room_not_found"})
             await self.close()
             return
+
+        room = ROOMS.setdefault(self.room_name, {})
 
         # 重ならないよう少しずらした位置に出現させる
         state = {
@@ -76,6 +80,10 @@ class SpaceConsumer(AsyncJsonWebsocketConsumer):
         await self._broadcast({"type": "player_moved", **state})
 
     # --- 内部処理 ---
+
+    @database_sync_to_async
+    def _room_exists(self) -> bool:
+        return SpaceRoom.objects.filter(slug=self.room_name).exists()
 
     async def _broadcast(self, message: dict):
         await self.channel_layer.group_send(

@@ -47,6 +47,10 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: acafe-backend
+    # 開発中は runserver で起動する(コードを保存すると自動で再起動される)。
+    # INSTALLED_APPS に daphne があるので、runserver でも WebSocket(/ws/space/ など)が動く。
+    # 起動時に entrypoint.sh が migrate を流すので、マイグレーションを追加したら再起動だけでOK。
+    command: python manage.py runserver 0.0.0.0:8000
     env_file:
       - ./backend/.env
     volumes:
