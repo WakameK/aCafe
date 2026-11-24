@@ -123,7 +123,18 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [("redis", 6379)],
+            "hosts": [
+                {
+                    "address": "redis://redis:6379/0",
+                    # channels_redis は最大5秒間メッセージを待つ(BZPOPMIN)。
+                    # クライアント側の読み取り待ち時間をそれより長くしておかないと、
+                    # 何も届いていないだけで "Timeout reading from redis" になる
+                    "socket_timeout": 10,
+                    "socket_connect_timeout": 5,
+                    # 長時間つなぎっぱなしでも接続が切れていないか定期的に確認する
+                    "health_check_interval": 30,
+                }
+            ],
         },
     },
 }
