@@ -10,7 +10,7 @@ export default function ChatPage() {
     <CafeShell title="カフェのマスターと話す" description="マスターに話しかけてください。">
       <div className={styles.chatContainer}>
         <div className={styles.chatHeader}>
-          <h3>☕ カフェのカウンター</h3>
+          <h3>☕ カフェのマスター</h3>
           <p>マスターが黙々と作業している...</p>
         </div>
 

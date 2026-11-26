@@ -30,9 +30,6 @@ class Room(models.Model):
     # 「誰もいない部屋にAIキャラを入れる」ロジックの二重起動防止フラグ
     ai_join_scheduled = models.BooleanField(default=False)
 
-    # 今この部屋に接続している人間の人数(WebSocket接続時/切断時にconsumerが増減させる)
-    human_count = models.PositiveIntegerField(default=0)
-
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -60,30 +57,46 @@ class Message(models.Model):
 
 
 # ====================================
-# 座席
+# 在席(WebSocket接続ごとのリース)
 # ====================================
 
-class Seat(models.Model):
+class Presence(models.Model):
     """
-    カフェの座席。人が座った時点で、その席に紐づくチャット空間(Room)が作られる。
+    「今この部屋に人間が接続している」ことを表す記録。接続ごとに1行。
+    カウンタの増減ではなく、last_seen が新しい行の数を在席数とする。
+    これにより、サーバーやconsumerが異常終了してdisconnectが呼ばれなくても、
+    しばらくすれば自動的に在席から外れる(幽霊で席が満席のままになるのを防ぐ)。
+    """
+    room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name="presences")
+    channel_name = models.CharField(max_length=200, unique=True)
+    last_seen = models.DateTimeField()
 
-    - 席に最初の1人が座る → 新しいRoomを作って room に紐づける
-    - 2人目以降は、capacity の範囲内で同じRoomに相席する
-    - 全員が離れて(human_count == 0)猶予時間が過ぎた席は「空席」。次に座る人には新しいRoomを作る
+
+# ====================================
+# テーブル
+# ====================================
+
+class Table(models.Model):
     """
-    label = models.CharField(max_length=50, unique=True)   # 例: "カウンター1"
-    capacity = models.PositiveSmallIntegerField(default=4)  # 同時に座れる人数
+    店内のテーブル。話題ごとに作られ、人数の上限は無い(テーブルを繋げた1つの大きな空間のイメージ)。
+    誰かが座っている間、そのテーブルに紐づくチャット空間(Room)に全員が合流する。
+
+    - 利用者が話題を付けて作ったテーブルは、全員が離れたら閉じる
+    - is_permanent のテーブルは常設。全員が離れても残り、次に座る人には新しいRoomを作る
+    """
+    name = models.CharField(max_length=30)   # テーブルの話題。例: "最近読んだ本"
+    is_permanent = models.BooleanField(default=False)
     room = models.OneToOneField(
-        Room, null=True, blank=True, on_delete=models.SET_NULL, related_name="seat"
+        Room, null=True, blank=True, on_delete=models.SET_NULL, related_name="table"
     )
-    # 最後に誰かが座った時刻。座ってからWebSocketが繋がるまでの間に席が「空き」に見えないための予約として使う
+    # 最後に誰かが座った時刻。座ってからWebSocketが繋がるまでの間にテーブルが「空き」に見えないための予約として使う
     sat_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["id"]
 
     def __str__(self):
-        return self.label
+        return self.name
 
 
 # ====================================

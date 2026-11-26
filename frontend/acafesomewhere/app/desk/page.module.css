@@ -1,4 +1,4 @@
-.seatList {
+.tableList {
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -13,7 +13,7 @@
   color: #5d4037;
 }
 
-.seats {
+.tables {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -22,7 +22,7 @@
   gap: 1rem;
 }
 
-.seat {
+.table {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -33,15 +33,11 @@
   color: #3e2723;
 }
 
-.seat.occupied {
+.table.occupied {
   border-color: #c5a572;
 }
 
-.seat.full {
-  opacity: 0.6;
-}
-
-.seatHead {
+.tableHead {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -67,7 +63,8 @@
   color: #6d4c41;
 }
 
-.seat button,
+.table button,
+.newTable button,
 .inputArea button,
 .leaveButton {
   border: none;
@@ -79,13 +76,8 @@
   font-weight: 600;
 }
 
-.seat button {
+.table button {
   margin-top: auto;
-}
-
-.seat button:disabled {
-  cursor: not-allowed;
-  background: #bdb3a3;
 }
 
 .room {
@@ -183,6 +175,34 @@
 }
 
 .inputArea input {
+  flex: 1;
+  padding: 0.7rem 1rem;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+}
+
+.floor {
+  margin: 0;
+  color: #6d4c41;
+}
+
+.newTable {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem 1.25rem;
+  background: #fffef9;
+  border: 1px dashed #c5a572;
+  border-radius: 8px;
+  color: #3e2723;
+}
+
+.newTableRow {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.newTableRow input {
   flex: 1;
   padding: 0.7rem 1rem;
   border: 2px solid #ddd;

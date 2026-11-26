@@ -14,6 +14,7 @@ export default function Footer() {
             <li><Link href="/">店内を見る</Link></li>
             <li><Link href="/about">この店について</Link></li>
             <li><Link href="/chat">マスターと話す</Link></li>
+            <li><Link href="/sandplay">箱庭</Link></li>
             <li><Link href="/atelier">アトリエ</Link></li>
             <li><Link href="/login">合言葉</Link></li>
           </ul>

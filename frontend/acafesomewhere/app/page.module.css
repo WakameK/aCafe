@@ -129,6 +129,7 @@
 .tableRight { left: 78%; top: 68%; }
 .entranceBoard { left: 7%; top: 68%; }
 .backDoor { left: 37%; top: 34%; }
+.sandplay { left: 55%; top: 42%; }
 
 @media (max-width: 700px) {
   .main {
@@ -162,4 +163,5 @@
   .tableRight { left: 80%; top: 72%; }
   .entranceBoard { left: 10%; top: 73%; }
   .backDoor { left: 39%; top: 34%; }
+  .sandplay { left: 57%; top: 43%; }
 }
