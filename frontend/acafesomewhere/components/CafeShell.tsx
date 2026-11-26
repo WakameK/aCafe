@@ -27,6 +27,9 @@ export default function CafeShell({ title, description, children }: CafeShellPro
               <Link href="/chat">カフェのマスターと話す</Link>
             </li>
             <li>
+              <Link href="/sandplay">箱庭</Link>
+            </li>
+            <li>
               <Link href="/atelier">女性のアトリエ</Link>
             </li>
             <li>

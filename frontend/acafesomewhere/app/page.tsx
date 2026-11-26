@@ -27,8 +27,8 @@ export default function Home() {
             className={styles.cafeImage}
           />
 
-          <a href="/chat" className={`${styles.hotspot} ${styles.counter}`} aria-label="カウンターでマスターと話す">
-            <span>マスターと話す</span>
+          <a href="/chat" className={`${styles.hotspot} ${styles.counter}`} aria-label="カフェのマスターと話す">
+            <span>カフェのマスターと話す</span>
           </a>
 
           <a href="/desk" className={`${styles.hotspot} ${styles.tableLeft}`} aria-label="窓辺の席で誰かと話す">
@@ -45,6 +45,10 @@ export default function Home() {
 
           <a href="/about" className={`${styles.hotspot} ${styles.entranceBoard}`} aria-label="入口の黒板を見る">
             <span>この店について</span>
+          </a>
+
+          <a href="/sandplay" className={`${styles.hotspot} ${styles.sandplay}`} aria-label="本棚の箱庭で遊ぶ">
+            <span>箱庭</span>
           </a>
 
           <a href="/atelier" className={`${styles.hotspot} ${styles.backDoor}`} aria-label="奥のアトリエへ行く">
